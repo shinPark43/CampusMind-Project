@@ -1,6 +1,7 @@
 // index.jsx
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { Link } from 'expo-router'
 
 const LoginPage = () => {
   const [username, setUsername] = useState('');
@@ -11,7 +12,7 @@ const LoginPage = () => {
       Alert.alert('Error', 'Please enter both username and password.');
     } else {
       // Handle the login logic here, e.g., API call or navigation
-      Alert.alert('Success', 'Login successful');
+      // Alert.alert('Success', 'Login successful');
     }
   };
 
@@ -45,9 +46,9 @@ const LoginPage = () => {
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity style={styles.button} onPress={handleLogin}>
+      <Link href="/explore" style={styles.button} onPress={handleLogin}>
         <Text style={styles.buttonText}>Login</Text>
-      </TouchableOpacity>
+      </Link>
     </View>
   );
 };
