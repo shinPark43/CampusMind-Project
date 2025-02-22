@@ -191,7 +191,7 @@ const styles = StyleSheet.create({
   card2: {
     backgroundColor: COLORS.primary, // ✅ Building Tracker
   },
-  llink: {
+  link: {
     width: '100%',
     height: '100%',
     justifyContent: 'center',  
