@@ -7,12 +7,16 @@ import Icon from 'react-native-vector-icons/Feather';
 const LoginPage = () => {
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [email, setEmail] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
   const togglePasswordVisibility = () => {
     setPasswordVisible(!passwordVisible);
   }
 
+  const handleLogin = async() => {
+    if (email === '' || password === '') {
+      Alert.alert('Error', 'Please enter both email and password.');
   const handleLogin = async() => {
     if (email === '' || password === '') {
       Alert.alert('Error', 'Please enter both email and password.');
@@ -58,6 +62,8 @@ const LoginPage = () => {
           style={styles.input}
           placeholder="E-mail"
           placeholderTextColor="#888"
+          value={email}
+          onChangeText={setEmail}
           value={email}
           onChangeText={setEmail}
         />
