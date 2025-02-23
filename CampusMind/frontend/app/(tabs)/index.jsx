@@ -6,19 +6,37 @@ import Icon from 'react-native-vector-icons/Feather';
 
 const LoginPage = () => {
   const [passwordVisible, setPasswordVisible] = useState(false);
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
   const togglePasswordVisibility = () => {
     setPasswordVisible(!passwordVisible);
   }
 
-  const handleLogin = () => {
-    if (username === '' || password === '') {
-      Alert.alert('Error', 'Please enter both username and password.');
+  const handleLogin = async() => {
+    if (email === '' || password === '') {
+      Alert.alert('Error', 'Please enter both email and password.');
     } else {
-      // Handle the login logic here, e.g., API call or navigation
-      // Alert.alert('Success', 'Login successful');
+      try {
+        const response = await fetch('http://74.197.69.111/userLogin', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email, password}),
+        });
+        
+        const data = await response.json();
+
+        if (response.status === 200) {
+          Alert.alert('Success', 'Login successful');
+        } else {
+          Alert.alert('Error', data.error);
+        }
+      } catch (error) {
+        console.error(error);
+        Alert.alert('Error', 'Something went wrong. Please try again later.');
+      }
     }
   };
 
@@ -38,10 +56,10 @@ const LoginPage = () => {
         <Icon name="mail" size={20} color="#888" style={styles.icon}/>
         <TextInput
           style={styles.input}
-          placeholder="Username"
+          placeholder="E-mail"
           placeholderTextColor="#888"
-          value={username}
-          onChangeText={setUsername}
+          value={email}
+          onChangeText={setEmail}
         />
       </View>
 
