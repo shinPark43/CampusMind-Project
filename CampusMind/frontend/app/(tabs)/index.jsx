@@ -17,8 +17,26 @@ const LoginPage = () => {
     if (email === '' || password === '') {
       Alert.alert('Error', 'Please enter both email and password.');
     } else {
-      // Handle the login logic here, e.g., API call or navigation
-      // Alert.alert('Success', 'Login successful');
+      try {
+        const response = await fetch('http://localhost:3000/userLogin', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email, password}),
+        });
+        
+        const data = await response.json();
+
+        if (response.status === 200) {
+          Alert.alert('Success', 'Login successful');
+        } else {
+          Alert.alert('Error', data.error);
+        }
+      } catch (error) {
+        console.error(error);
+        Alert.alert('Error', 'Something went wrong. Please try again later.');
+      }
     }
   };
 
