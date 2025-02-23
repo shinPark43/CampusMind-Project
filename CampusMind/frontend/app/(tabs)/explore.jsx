@@ -3,6 +3,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Dimensions, Animated, TouchableOpacity, PanResponder } from 'react-native';
 import { Link } from 'expo-router';
 import { COLORS } from './theme'; // ✅ Import COLORS
+import WeatherWidget from './WeatherWidget';
 
 const { width, height } = Dimensions.get('window');
 
@@ -126,24 +127,7 @@ const HomePage = () => {
         ))}
       </View>
 
-      {/* Navigation Buttons */}
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity
-          onPress={() => handleButtonPress('prev')}
-          style={[styles.navButton, { opacity: currentIndex === 0 ? 0.5 : 1 }]}
-          disabled={currentIndex === 0}
-        >
-          <Text style={styles.buttonText}>Previous</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={() => handleButtonPress('next')}
-          style={[styles.navButton, { opacity: currentIndex === features.length - 1 ? 0.5 : 1 }]}
-          disabled={currentIndex === features.length - 1}
-        >
-          <Text style={styles.buttonText}>Next</Text>
-        </TouchableOpacity>
-      </View>
+      <WeatherWidget />
     </View>
   );
 };
@@ -201,28 +185,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: COLORS.textPrimary, // ✅ Link text color
     fontSize: 24,
-    fontWeight: 'bold',
-  },
-  buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 30,
-    width: width * 0.8,
-  },
-  navButton: {
-    backgroundColor: COLORS.button, // ✅ Button color
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 10,
-    width: width * 0.35,
-    alignItems: 'center',
-    flex: 1,
-    marginHorizontal: 5,
-  },
-  buttonText: {
-    color: COLORS.textPrimary, // ✅ Button text color
-    fontSize: 16,
     fontWeight: 'bold',
   },
   indicatorContainer: {
