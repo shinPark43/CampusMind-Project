@@ -18,7 +18,7 @@ const LoginPage = () => {
       Alert.alert('Error', 'Please enter both email and password.');
     } else {
       try {
-        const response = await fetch('http://localhost:3000/userLogin', {
+        const response = await fetch('http://localhost:3000/users/userLogin', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -28,10 +28,10 @@ const LoginPage = () => {
         
         const data = await response.json();
 
-        if (response.status === 200) {
+        if (response.ok) {
           Alert.alert('Success', 'Login successful');
         } else {
-          Alert.alert('Error', data.error);
+          Alert.alert('Error', data.error || 'Login failed');
         }
       } catch (error) {
         console.error(error);
@@ -88,9 +88,9 @@ const LoginPage = () => {
         <Text style={styles.buttonText}>Login</Text>
       </Link>
 
-      <TouchableOpacity style={styles.button_signUp}>
+      <Link href="/SignUpPage" style={styles.button_signUp}>
         <Text style={styles.buttonText} numberOfLines={1}>Sign Up</Text>
-      </TouchableOpacity>
+      </Link>
     </View>
   );
 };
