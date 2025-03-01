@@ -136,34 +136,34 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     alignItems: 'center',
-    paddingTop: 50,
+    paddingTop: height * 0.05,
     backgroundColor: COLORS.background, // ✅ Background color
   },
   header: {
-    fontSize: 35,
-    paddingTop: 20,
+    fontSize: width * 0.1,
+    paddingTop: height * 0.02,
     fontWeight: 'bold',
-    marginBottom: 20,
+    marginBottom: height * 0.03,
     color: COLORS.textPrimary, // ✅ Header text color
   },
   carouselContainer: {
     width: width,
-    height: height * 0.5,
+    height: height * 0.28,
     overflow: 'hidden',
-    marginBottom: -145,
   },
   card: {
     width: width * 0.9,
-    height: 250,
+    height: height * 0.28,
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
     marginHorizontal: width * 0.05,
     shadowColor: '#000', // Shadow for depth
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: height * 0.005 },
     shadowOpacity: 0.3,
     shadowRadius: 5,
     elevation: 5,
+    position: 'relative',
   },
   // Specific card colors using COLORS
   card0: {
@@ -184,13 +184,14 @@ const styles = StyleSheet.create({
   linkText: {
     textAlign: 'center',
     color: COLORS.textPrimary, // ✅ Link text color
-    fontSize: 24,
+    fontSize: width * 0.07,
     fontWeight: 'bold',
   },
   indicatorContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: 10,
+    position: 'absolute',
+    top: height * 0.38 + height * 0.02 + width * 0.1,
   },
   indicator: {
     width: 10,

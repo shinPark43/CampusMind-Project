@@ -241,12 +241,11 @@ const BookingPage = () => {
             />
 
             <View style={styles.modalButtonContainer}>
-              <TouchableOpacity style={styles.confirmButton} onPress={confirmDate} disabled={!tempSelectedDate}>
-                <Text style={styles.buttonText}>Confirm</Text>
-              </TouchableOpacity>
-
               <TouchableOpacity style={styles.cancelButton} onPress={cancelDateSelection}>
                 <Text style={styles.buttonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.confirmButton} onPress={confirmDate} disabled={!tempSelectedDate}>
+                <Text style={styles.buttonText}>Confirm</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -274,12 +273,12 @@ const BookingPage = () => {
             </ScrollView>
 
             <View style={styles.modalButtonContainer}>
-              <TouchableOpacity style={styles.confirmButton} onPress={confirmTimeSelection}>
-                <Text style={styles.buttonText}>Confirm</Text>
-              </TouchableOpacity>
-
               <TouchableOpacity style={styles.cancelButton} onPress={cancelTimeSelection}>
                 <Text style={styles.buttonText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.confirmButton} onPress={confirmTimeSelection}>
+                <Text style={styles.buttonText}>Confirm</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -407,13 +406,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginTop: 15,
   },
-  confirmButton: {
+  cancelButton: {
     backgroundColor: COLORS.button,
     paddingVertical: 10,
     paddingHorizontal: 20,
     borderRadius: 5,
   },
-  cancelButton: {
+  confirmButton: {
     backgroundColor: COLORS.primary,
     paddingVertical: 10,
     paddingHorizontal: 20,
