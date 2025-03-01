@@ -12,7 +12,7 @@ const WeatherWidget = () => {
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState(null);
   const [isModalVisible, setIsModalVisible] = useState(false); // ✅ Modal state
-  const [isFahrenheit, setIsFahrenheit] = useState(false); // ✅ 화씨 여부
+  const [isFahrenheit, setIsFahrenheit] = useState(true); 
 
   useEffect(() => {
     (async () => {
@@ -112,9 +112,9 @@ const WeatherWidget = () => {
               <Switch
                 value={isFahrenheit}
                 onValueChange={setIsFahrenheit}
-                trackColor={{ false: '#ccc', true: COLORS.primary }} // 🔄 배경색 변경
-                thumbColor={isFahrenheit ? COLORS.secondary : '#f4f3f4'} // 🔄 원 색상
-                ios_backgroundColor="#ccc" // iOS용 백그라운드 색상
+                trackColor={{ false: '#ccc', true: COLORS.primary }} 
+                thumbColor={isFahrenheit ? COLORS.secondary : '#f4f3f4'} 
+                ios_backgroundColor="#ccc"
                 />
 
               <Text style={styles.switchLabel}>°F</Text>
