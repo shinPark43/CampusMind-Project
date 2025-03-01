@@ -130,7 +130,8 @@ const styles = StyleSheet.create({
   // ✅ Mini Widget Style
   miniContainerWrapper: {
     alignSelf: 'flex-start',
-    marginLeft: 10,
+    marginLeft: 200,
+    marginTop: -100,
   },
   miniContainer: {
     backgroundColor: COLORS.secondary,

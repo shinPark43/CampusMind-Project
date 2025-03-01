@@ -2,7 +2,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Dimensions, Animated, TouchableOpacity, PanResponder } from 'react-native';
 import { Link } from 'expo-router';
-import { COLORS } from './theme'; // ✅ Import COLORS
+import { COLORS } from './theme'; // Import COLORS
 import WeatherWidget from './WeatherWidget';
 
 const { width, height } = Dimensions.get('window');
@@ -15,29 +15,44 @@ const HomePage = () => {
     { title: 'Building Tracker', link: 'TrackingPage' },  
   ]);
   
+  const [myBookings, setMyBookings] = useState([
+    { id: 1, date: "March 5, 2024", time: "6:00 PM" },
+    { id: 2, date: "March 8, 2024", time: "4:30 PM" },
+  ]);
+
+  useEffect(() => {
+    fetchBookings();
+  }, []);
+  
+  const fetchBookings = async () => {
+    try {
+      // Need backend API
+      const response = await axios.get('https://your-api.com/my-bookings');
+      setMyBookings(response.data);
+    } catch (error) {
+      console.log("Error fetching bookings:", error);
+    }
+  };
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const scrollX = useRef(new Animated.Value(0)).current;
-  const tempIndex = useRef(0); // 스와이프 도중 임시로 인덱스를 저장
+  const tempIndex = useRef(0);  
 
   // Auto-slide every 5 seconds
   useEffect(() => {
     const interval = setInterval(() => {
       if (tempIndex.current < features.length - 1) {
-        // 다음 카드로 이동
         handleButtonPress('next');
       } else {
-        // 마지막 카드일 때 첫 번째 카드로 돌아가기
         tempIndex.current = 0;
         setCurrentIndex(0);
         animateCard(0);
       }
-    }, 5000); // 5초마다 자동 전환
+    }, 5000);
   
     return () => clearInterval(interval);
   }, [currentIndex]);
 
-  // 스와이프 제스처 핸들러
   const panResponder = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, gestureState) => Math.abs(gestureState.dx) > 5,
@@ -45,20 +60,17 @@ const HomePage = () => {
         scrollX.setValue(-tempIndex.current * width + gestureState.dx);
       },
       onPanResponderRelease: (_, gestureState) => {
-        const swipeThreshold = width * 0.15; // 스와이프 임계값 (15%)
+        const swipeThreshold = width * 0.15;
 
         if (gestureState.dx > swipeThreshold && tempIndex.current > 0) {
-          // 오른쪽으로 스와이프 → 이전 카드
           tempIndex.current -= 1;
-          setCurrentIndex(tempIndex.current); // 즉시 인덱스 업데이트
+          setCurrentIndex(tempIndex.current);
           animateCard(tempIndex.current);
         } else if (gestureState.dx < -swipeThreshold && tempIndex.current < features.length - 1) {
-          // 왼쪽으로 스와이프 → 다음 카드
           tempIndex.current += 1;
-          setCurrentIndex(tempIndex.current); // 즉시 인덱스 업데이트
+          setCurrentIndex(tempIndex.current);
           animateCard(tempIndex.current);
         } else {
-          // 기준 미달 → 원래 자리로 복귀
           animateCard(tempIndex.current);
         }
       },
@@ -127,6 +139,23 @@ const HomePage = () => {
         ))}
       </View>
 
+      <View style={styles.bookingContainer}>
+        <Text style={styles.sectionTitle}>My Bookings</Text>
+
+        {myBookings.length > 0 ? (
+          myBookings.slice(0, 2).map((booking) => (
+            <View key={booking.id} style={styles.bookingCard}>
+              <Text style={styles.bookingDate}>{booking.date} at {booking.time}</Text>
+            </View>
+          ))
+        ) : (
+          <Text style={styles.noBookingText}>No bookings available</Text>
+        )}
+
+        <TouchableOpacity onPress={() => console.log("Go to Booking Page")} style={styles.seeAllButton}>
+          <Text style={styles.seeAllText}>See All</Text>
+        </TouchableOpacity>
+      </View>
       <WeatherWidget />
     </View>
   );
@@ -137,14 +166,14 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     paddingTop: height * 0.05,
-    backgroundColor: COLORS.background, // ✅ Background color
+    backgroundColor: COLORS.background, //Background color
   },
   header: {
     fontSize: width * 0.1,
     paddingTop: height * 0.02,
     fontWeight: 'bold',
     marginBottom: height * 0.03,
-    color: COLORS.textPrimary, // ✅ Header text color
+    color: COLORS.textPrimary, //Header text color
   },
   carouselContainer: {
     width: width,
@@ -167,13 +196,13 @@ const styles = StyleSheet.create({
   },
   // Specific card colors using COLORS
   card0: {
-    backgroundColor: COLORS.primary, // ✅ Book a Court
+    backgroundColor: COLORS.primary, //Book a Court
   },
   card1: {
-    backgroundColor: COLORS.primary, // ✅ Marketplace
+    backgroundColor: COLORS.primary, //Marketplace
   },
   card2: {
-    backgroundColor: COLORS.primary, // ✅ Building Tracker
+    backgroundColor: COLORS.primary, //Building Tracker
   },
   link: {
     width: '100%',
@@ -183,7 +212,7 @@ const styles = StyleSheet.create({
   },
   linkText: {
     textAlign: 'center',
-    color: COLORS.textPrimary, // ✅ Link text color
+    color: COLORS.textPrimary, //Link text color
     fontSize: width * 0.07,
     fontWeight: 'bold',
   },
@@ -198,6 +227,55 @@ const styles = StyleSheet.create({
     height: 10,
     borderRadius: 5,
     marginHorizontal: 5,
+  },
+  bookingContainer: {
+    width: width * 0.47,
+    height: height * 0.2,
+    backgroundColor: COLORS.primary,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginHorizontal: width * 0.05,
+    shadowColor: '#000', // Shadow for depth
+    shadowOffset: { width: 0, height: height * 0.005 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 5,
+    position: 'relative',
+    top: 50,
+    marginLeft: width * -0.4,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: COLORS.textPrimary,
+    marginBottom: 10,
+  },
+  bookingCard: {
+    backgroundColor: COLORS.secondary,
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  bookingDate: {
+    fontSize: 14,
+    color: '#2f3542',
+  },
+  noBookingText: {
+    textAlign: "center",
+    color: "#666",
+    fontSize: 14,
+  },
+  seeAllButton: {
+    marginTop: 10,
+    backgroundColor: COLORS.primary,
+    padding: 8,
+    borderRadius: 5,
+    alignItems: "center",
+  },
+  seeAllText: {
+    color: "#fff",
+    fontWeight: "bold",
   },
 });
 
