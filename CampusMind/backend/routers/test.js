@@ -7,7 +7,7 @@ dotenv.config({ path: `.env.${process.env.NODE_ENV}` });
 // Function to create a new user
 const createUser = async (userData) => {
     try {
-        const response = await axios.post('http://localhost:3000/createUser', userData); // Use the correct API endpoint
+        const response = await axios.post('http://192.168.1.167:3000/createUser', userData); // Use the correct API endpoint
         console.log('User created:', response.data);
     } catch (error) {
         if (error.response) {
@@ -20,11 +20,11 @@ const createUser = async (userData) => {
 
 // Example usage
 const userData = {
-    firstName: 'Again',
-    lastName: 'Hi',
-    CID: '1234424',
-    email: 'again.hi@example.com',
-    password: 'password1111'
+    firstName: 'Hiiiiii',
+    lastName: 'Heeeey',
+    CID: '51513563',
+    email: 'hiiiiii.heeeey@example.com',
+    password: 'password2115'
 };
 
 createUser(userData);

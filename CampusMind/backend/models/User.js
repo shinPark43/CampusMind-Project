@@ -53,7 +53,7 @@ const userSchema = new Schema({
 userSchema.pre('save', async function (next) {
     const user = this;
     if (user.isModified('password')) {
-        user.password = await hash(user.password, 10);
+        user.password = await hash(user.password, 8);
     }
     next();
 });
@@ -66,7 +66,7 @@ userSchema.methods.generateAuthToken = async function() {
     user.tokens = user.tokens.filter(tokenObj => tokenObj.token);
 
     // Ensure `tokens` is initialized before pushing a new token
-    if (!Array.isArray(user.tokens)) {
+    if (!Array.isArray(user.tokens) || user.tokens.length === 0) {
         user.tokens = [];
     }
 
