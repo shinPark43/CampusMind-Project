@@ -23,16 +23,13 @@ router.post('/createUser', async (req, res) => {
             last_name: lastName, 
             CID: CID, 
             email: email, 
-            password: password, 
-            tokens: []
-        }); // Initialize tokens as an empty array
+            password: password
+        }); // Create a new user
         
         const token = await user.generateAuthToken(); // Generate an authentication token
-        // user.tokens.push({ token }); // Add the token to the user's tokens array
-        // await user.save(); // Save the user
+        await user.save(); // Save the user
 
-        console.log('User created:', user);
-        //console.log('Token generated:', token);
+        console.log('User created:', user); // Log the user
 
         res.status(201).send({ user, token }); // Respond with the user and token
     } catch (error) {
