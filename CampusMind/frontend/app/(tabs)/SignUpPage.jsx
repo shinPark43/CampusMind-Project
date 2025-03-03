@@ -15,7 +15,7 @@ const SignUpScreen = () => {
   // Function to handle the sign-up action
   const handleSignUp = async () => {
     try {
-      const response = await fetch('http://localhost:3000/users/createUser', {
+      const response = await fetch('http://<your IPv4 address in cmd with command ipconfig>:3000/createUser', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
