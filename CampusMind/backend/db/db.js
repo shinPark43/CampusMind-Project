@@ -19,6 +19,7 @@ const connectDB = async () => {
 
     try {
         await connect(mongoURI, { 
+            dbName: 'CHP', // Database name
             // These options are deprecated for this new version of Mongoose
                 // useNewUrlParser: true,
                 // useCreateIndex: true, 
