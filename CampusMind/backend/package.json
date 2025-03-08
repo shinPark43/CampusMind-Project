@@ -5,27 +5,28 @@
     "main": "app.js",
     "type": "module",
     "scripts": {
-      "test": "echo \"Error: no test specified\" && exit 1",
-      "start": "env-cmd -f ./Back-end/.env nodemon ./Back-end/app.js"
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "start": "env-cmd -f ./Back-end/.env nodemon ./Back-end/app.js"
     },
     "author": "Luan Le",
     "license": "ISC",
     "dependencies": {
-      "axios": "^1.7.9",
-      "bcryptjs": "^2.4.3",
-      "body-parser": "^1.20.3",
-      "cors": "^2.8.5",
-      "express": "^4.21.2",
-      "jsonwebtoken": "^9.0.2",
-      "mongodb": "^6.13.0",
-      "mongoose": "^8.10.0",
-      "moongoose": "^0.0.1",
-      "nodemon": "^3.1.9",
-      "postmark": "^4.0.5",
-      "validator": "^13.12.0"
+        "axios": "^1.7.9",
+        "bcryptjs": "^2.4.3",
+        "body-parser": "^1.20.3",
+        "campusmind_mobile": "file:",
+        "cors": "^2.8.5",
+        "dotenv": "^16.4.7",
+        "express": "^4.21.2",
+        "jsonwebtoken": "^9.0.2",
+        "mongodb": "^6.13.0",
+        "mongoose": "^8.10.0",
+        "moongoose": "^0.0.1",
+        "nodemon": "^3.1.9",
+        "postmark": "^4.0.5",
+        "validator": "^13.12.0"
     },
     "devDependencies": {
-      "env-cmd": "^10.1.0"
+        "env-cmd": "^10.1.0"
     }
-  }
-  
+}

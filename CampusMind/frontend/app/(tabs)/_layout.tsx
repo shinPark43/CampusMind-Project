@@ -58,6 +58,14 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="basketball.fill" color={color} />,
         }}
       />
+      <Tabs.Screen
+        name="bookingOption"
+        options={{
+          tabBarStyle: {display: 'none'},
+          title: 'book_option',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="basketball.fill" color={color} />,
+        }}
+      />
     </Tabs>
   );
 }
