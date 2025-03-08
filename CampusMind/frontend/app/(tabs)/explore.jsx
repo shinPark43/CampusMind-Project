@@ -129,7 +129,7 @@ const HomePage = () => {
           />
         ))}
       </View>
-      <View style={styles.bookingSummary}>
+      <View>
         {bookingDetails ? (
           <View style={styles.bookingSummary}>
             <Text style={styles.summaryTitle}>Booking Summary</Text>
