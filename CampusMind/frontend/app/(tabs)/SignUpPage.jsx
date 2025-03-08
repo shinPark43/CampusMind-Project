@@ -15,7 +15,7 @@ const SignUpScreen = () => {
   // Function to handle the sign-up action
   const handleSignUp = async () => {
     try {
-      const response = await fetch('http://<your IPv4 address in cmd with command ipconfig>:3000/createUser', {
+      const response = await fetch('http://10.80.72.236:3000/createUser', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -27,9 +27,8 @@ const SignUpScreen = () => {
       const json = await response.json();
 
       if (response.ok) {
-        Alert.alert("Success", "User created successfully!", [
-          { text: "OK", onPress: () => navigation.navigate("/CampusMind/frontend/app/(tabs)/index.jsx")}
-        ]);
+        // If sign up is successful, navigate user back to the login page
+        Alert.alert("Success", "User created successfully!");
         // Optionally navigate to another screen after successful signup
       } else {
         // Display the error returned from the backend

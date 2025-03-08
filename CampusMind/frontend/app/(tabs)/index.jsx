@@ -18,7 +18,7 @@ const LoginPage = () => {
       Alert.alert('Error', 'Please enter both email and password.');
     } else {
       try {
-        const response = await fetch('http://192.168.1.218:3000/users/userLogin', {
+        const response = await fetch('http://localhost:3000/userLogin', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

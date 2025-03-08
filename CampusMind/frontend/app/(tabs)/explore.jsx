@@ -11,7 +11,7 @@ const { width, height } = Dimensions.get('window');
 const HomePage = () => {
   const [features, setFeatures] = useState([
     { title: 'Book a Court', link: 'BookingPage' }, 
-    { title: 'Marketplace', link: 'MarketplacePage' },  
+    { title: 'Marketplace', link: 'bookingOption' },  
     { title: 'Building Tracker', link: 'TrackingPage' },  
   ]);
   
