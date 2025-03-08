@@ -5,7 +5,7 @@ export const COLORS = {
     background: '#1B263B',      // App background color
     textPrimary: '#EBF8FF',     // Primary text color
     button: '#778DA9',          // Button color
-    indicatorActive: '#778DA9', // Active indicator color
-    indicatorInactive: '#B0C4E0', // Inactive indicator color
+    indicatorActive: '#B0C4E0', // Active indicator color
+    indicatorInactive: '#778DA9', // Inactive indicator color
   };
   

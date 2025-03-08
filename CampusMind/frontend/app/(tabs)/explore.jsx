@@ -4,35 +4,21 @@ import { View, Text, StyleSheet, Dimensions, Animated, TouchableOpacity, PanResp
 import { Link } from 'expo-router';
 import { COLORS } from './theme'; // Import COLORS
 import WeatherWidget from './WeatherWidget';
+import courtImage from '../../assets/images/court.jpg';
+import marketplaceImage from '../../assets/images/marketplace.jpg';
+import trackerImage from '../../assets/images/tracker.jpg';
+import { Image } from 'react-native';
+
 
 const { width, height } = Dimensions.get('window');
 
 
 const HomePage = () => {
   const [features, setFeatures] = useState([
-    { title: 'Book a Court', link: 'BookingPage' }, 
-    { title: 'Marketplace', link: 'bookingOption' },  
-    { title: 'Building Tracker', link: 'TrackingPage' },  
-  ]);
-  
-  const [myBookings, setMyBookings] = useState([
-    { id: 1, date: "March 5, 2024", time: "6:00 PM" },
-    { id: 2, date: "March 8, 2024", time: "4:30 PM" },
-  ]);
-
-  useEffect(() => {
-    fetchBookings();
-  }, []);
-  
-  const fetchBookings = async () => {
-    try {
-      // Need backend API
-      const response = await axios.get('https://your-api.com/my-bookings');
-      setMyBookings(response.data);
-    } catch (error) {
-      console.log("Error fetching bookings:", error);
-    }
-  };
+    { title: 'Book a Court', link: 'BookingPage', image: courtImage }, 
+    { title: 'Marketplace', link: 'MarketplacePage', image: marketplaceImage },  
+    { title: 'Building Tracker', link: 'TrackingPage', image: trackerImage },  
+  ]);  
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const scrollX = useRef(new Animated.Value(0)).current;
@@ -118,6 +104,7 @@ const HomePage = () => {
                 styles[`card${index}`],
               ]}
               >
+              <Image source={feature.image} style={styles.cardImage} />
               <Link href={feature.link} style={styles.link}>
                 <Text style={styles.linkText}>{feature.title}</Text>
               </Link>
@@ -138,23 +125,11 @@ const HomePage = () => {
           />
         ))}
       </View>
-
-      <View style={styles.bookingContainer}>
-        <Text style={styles.sectionTitle}>My Bookings</Text>
-
-        {myBookings.length > 0 ? (
-          myBookings.slice(0, 2).map((booking) => (
-            <View key={booking.id} style={styles.bookingCard}>
-              <Text style={styles.bookingDate}>{booking.date} at {booking.time}</Text>
-            </View>
-          ))
-        ) : (
-          <Text style={styles.noBookingText}>No bookings available</Text>
-        )}
-
-        <TouchableOpacity onPress={() => console.log("Go to Booking Page")} style={styles.seeAllButton}>
-          <Text style={styles.seeAllText}>See All</Text>
-        </TouchableOpacity>
+      <View style={styles.bookingSummary}>
+        <Text style={styles.summaryTitle}>Booking Summary</Text>
+        <Text style={styles.summaryText}>Date: </Text>
+        <Text style={styles.summaryText}>Time: </Text>
+        <Text style={styles.summaryText}>Sport: </Text>
       </View>
       <WeatherWidget />
     </View>
@@ -204,6 +179,13 @@ const styles = StyleSheet.create({
   card2: {
     backgroundColor: COLORS.primary, //Building Tracker
   },
+  cardImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 20,
+    position: 'absolute',
+    opacity: 0.8, // Make it slightly transparent
+  },  
   link: {
     width: '100%',
     height: '100%',
@@ -228,54 +210,30 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     marginHorizontal: 5,
   },
-  bookingContainer: {
-    width: width * 0.47,
-    height: height * 0.2,
+  bookingSummary: {
+    width: width * 0.9,
+    marginTop: height * 0.053,
+    padding: 15,
     backgroundColor: COLORS.primary,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginHorizontal: width * 0.05,
+    borderRadius: 8,
+    marginBottom: 15,
     shadowColor: '#000', // Shadow for depth
     shadowOffset: { width: 0, height: height * 0.005 },
     shadowOpacity: 0.3,
     shadowRadius: 5,
     elevation: 5,
     position: 'relative',
-    top: 50,
-    marginLeft: width * -0.4,
   },
-  sectionTitle: {
+  summaryTitle: {
     fontSize: 18,
-    fontWeight: "bold",
+    fontWeight: 'bold',
+    marginBottom: 5,
     color: COLORS.textPrimary,
-    marginBottom: 10,
   },
-  bookingCard: {
-    backgroundColor: COLORS.secondary,
-    padding: 10,
-    borderRadius: 8,
-    marginBottom: 8,
-  },
-  bookingDate: {
-    fontSize: 14,
-    color: '#2f3542',
-  },
-  noBookingText: {
-    textAlign: "center",
-    color: "#666",
-    fontSize: 14,
-  },
-  seeAllButton: {
-    marginTop: 10,
-    backgroundColor: COLORS.primary,
-    padding: 8,
-    borderRadius: 5,
-    alignItems: "center",
-  },
-  seeAllText: {
-    color: "#fff",
-    fontWeight: "bold",
+  summaryText: {
+    fontSize: 16,
+    color: COLORS.textPrimary,
+    marginBottom: 3,
   },
 });
 

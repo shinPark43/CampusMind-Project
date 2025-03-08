@@ -1,17 +1,19 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, Image, useWindowDimensions, TouchableOpacity, Modal, Pressable, Switch } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, ActivityIndicator, Image, useWindowDimensions, TouchableOpacity, Modal, Pressable, Switch } from 'react-native';
 import * as Location from 'expo-location';
 import axios from 'axios';
 import { COLORS } from './theme';
 
 const API_KEY = '988a61e588953a7894d47bc8c884c314'; // Replace with your actual API key
 
+const { width, height } = Dimensions.get('window');
+
 const WeatherWidget = () => {
   const { width } = useWindowDimensions();
   const [weatherData, setWeatherData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState(null);
-  const [isModalVisible, setIsModalVisible] = useState(false); // ✅ Modal state
+  const [isModalVisible, setIsModalVisible] = useState(false); // Modal state
   const [isFahrenheit, setIsFahrenheit] = useState(true); 
 
   useEffect(() => {
@@ -32,7 +34,7 @@ const WeatherWidget = () => {
         setLoading(false);
       }
     })();
-  }, [isFahrenheit]); // ✅ 단위 변경 시 다시 호출
+  }, [isFahrenheit]); 
 
   // Fetch weather data using OpenWeather API
   const fetchWeather = async (lat, lon, useFahrenheit) => {
@@ -71,7 +73,7 @@ const WeatherWidget = () => {
     <>
       {/* ✅ Mini Widget */}
       <TouchableOpacity onPress={() => setIsModalVisible(true)} style={styles.miniContainerWrapper}>
-        <View style={[styles.miniContainer, { width: width * 0.25 }]}>
+        <View style={[styles.miniContainer, { width: width * 0.25, height: height * 0.1 }]}>
           <Image
             source={{ uri: `https://openweathermap.org/img/wn/${icon}@2x.png` }}
             style={styles.miniIcon}
@@ -130,13 +132,12 @@ const styles = StyleSheet.create({
   // ✅ Mini Widget Style
   miniContainerWrapper: {
     alignSelf: 'flex-start',
-    marginLeft: 200,
-    marginTop: -100,
+    marginLeft: width * 0.05,
+    marginTop: height * 0.01,
   },
   miniContainer: {
     backgroundColor: COLORS.secondary,
     borderRadius: 10,
-    padding: 10,
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'center',
@@ -157,7 +158,7 @@ const styles = StyleSheet.create({
     color: '#2f3542',
   },
 
-  // ✅ Full Widget (Modal) Style
+  // Full Widget (Modal) Style
   fullContainer: {
     backgroundColor: COLORS.secondary,
     borderRadius: 10,
