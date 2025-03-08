@@ -8,6 +8,8 @@ import courtImage from '../../assets/images/court.jpg';
 import marketplaceImage from '../../assets/images/marketplace.jpg';
 import trackerImage from '../../assets/images/tracker.jpg';
 import { Image } from 'react-native';
+import { useBooking } from './BookingContext';
+
 
 
 const { width, height } = Dimensions.get('window');
@@ -18,7 +20,9 @@ const HomePage = () => {
     { title: 'Book a Court', link: 'BookingPage', image: courtImage }, 
     { title: 'Marketplace', link: 'MarketplacePage', image: marketplaceImage },  
     { title: 'Building Tracker', link: 'TrackingPage', image: trackerImage },  
-  ]);  
+  ]);
+
+  const { bookingDetails } = useBooking();
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const scrollX = useRef(new Animated.Value(0)).current;
@@ -126,10 +130,19 @@ const HomePage = () => {
         ))}
       </View>
       <View style={styles.bookingSummary}>
-        <Text style={styles.summaryTitle}>Booking Summary</Text>
-        <Text style={styles.summaryText}>Date: </Text>
-        <Text style={styles.summaryText}>Time: </Text>
-        <Text style={styles.summaryText}>Sport: </Text>
+        {bookingDetails ? (
+          <View style={styles.bookingSummary}>
+            <Text style={styles.summaryTitle}>Booking Summary</Text>
+            <Text style={styles.summaryText}>Sport: {bookingDetails.sport}</Text>
+            <Text style={styles.summaryText}>Date: {bookingDetails.date}</Text>
+            <Text style={styles.summaryText}>Time: {bookingDetails.time}</Text>
+          </View>
+        ) : (
+          <View style={styles.bookingSummary}>
+            <Text style={styles.summaryTitle}>No Bookings Yet</Text>
+            <Text style={styles.summaryText}>Go to the Booking Page to make a reservation.</Text>
+          </View>
+        )}
       </View>
       <WeatherWidget />
     </View>

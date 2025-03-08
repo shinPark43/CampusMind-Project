@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Alert, FlatList, Image, useWi
 import { Link } from 'expo-router';
 import { COLORS } from './theme';
 import { Calendar } from 'react-native-calendars';
+import { useBooking } from './BookingContext';
 
 const COURTS = [
   { name: 'Badminton', icon: 'https://img.icons8.com/color/48/000000/badminton.png' },
@@ -76,6 +77,7 @@ const BookingPage = () => {
   const [isTimePickerVisible, setTimePickerVisible] = useState(false);
   const timeSlots = generateTimeSlots();
 
+  const { setBookingDetails } = useBooking();
   // ✅ Booking Confirmation
   const handleBooking = () => {
     if (!selectedCourt || !formattedDate || selectedTimeSlots.length === 0) {
@@ -83,10 +85,14 @@ const BookingPage = () => {
       return;
     }
     const formattedTimes = formatTimeSlots(selectedTimeSlots);
+    
+    setBookingDetails({
+      sport: selectedCourt,
+      date: formattedDate,
+      time: formattedTimes,
+    });
+  
     Alert.alert('Success', `Your booking for ${selectedCourt} on ${formattedDate} at ${formattedTimes} has been confirmed!`);
-    setSelectedCourt('');
-    setFormattedDate('');
-    setSelectedTimeSlots([]);
   };
 
   // ✅ Court Selection
