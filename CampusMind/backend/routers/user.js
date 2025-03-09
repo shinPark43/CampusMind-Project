@@ -38,4 +38,23 @@ router.post('/createUser', async (req, res) => {
     }
 });
 
+router.post('/userLogin', async (req, res) => {
+    console.log('Request Body:', req.body); // Debugging log
+    try {
+        const { email, password } = req.body;
+        if (!email || !password) {
+            return res.status(400).send({ error: 'Missing email or password' });
+        }
+        const user = await User.findByCredentials(email, password);
+        if (!user) {
+            return res.status(401).send({ error: 'Login failed! Check authentication credentials' });
+        }
+        const token = await user.generateAuthToken();
+        res.status(200).send({ user, token });
+    } catch (error) {
+        console.error(error);
+        res.status(400).send({ error: 'An error occurred' });
+    }
+});
+
 export default router;
