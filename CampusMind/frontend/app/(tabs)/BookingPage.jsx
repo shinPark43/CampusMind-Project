@@ -1,9 +1,10 @@
+// BookingPage.jsx
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, FlatList, Image, useWindowDimensions, Modal, ScrollView } from 'react-native';
 import { Link } from 'expo-router';
 import { COLORS } from './theme';
 import { Calendar } from 'react-native-calendars';
-// import { useBooking } from './BookingContext';
+import { useRouter } from 'expo-router';
 
 const COURTS = [
   { name: 'Badminton', icon: 'https://img.icons8.com/color/48/000000/badminton.png' },
@@ -12,7 +13,7 @@ const COURTS = [
   { name: 'Pickleball', icon: 'https://img.icons8.com/color/48/000000/pickle-ball.png' },
 ];
 
-// ✅ Generate 30-Minute Time Slots from 07:00 to 23:00
+// Generate 30-Minute Time Slots from 07:00 to 23:00
 const generateTimeSlots = (start = '07:00', end = '23:00') => {
   const slots = [];
   let [hour, minute] = start.split(':').map(Number);
@@ -30,7 +31,7 @@ const generateTimeSlots = (start = '07:00', end = '23:00') => {
   return slots;
 };
 
-// ✅ Format Time Slots (30-min blocks & consecutive grouping)
+// Format Time Slots (30-min blocks & consecutive grouping)
 const formatTimeSlots = (slots) => {
   if (slots.length === 0) return '';
 
@@ -76,25 +77,52 @@ const BookingPage = () => {
   const [isCalendarVisible, setCalendarVisible] = useState(false);
   const [isTimePickerVisible, setTimePickerVisible] = useState(false);
   const timeSlots = generateTimeSlots();
+  const [bookingDetails, setBookingDetails] = useState(null);
 
-  const { setBookingDetails } = useBooking();
   // ✅ Booking Confirmation
-  const handleBooking = () => {
-    if (!selectedCourt || !formattedDate || selectedTimeSlots.length === 0) {
-      Alert.alert('Error', 'Please fill in all the fields');
-      return;
-    }
-    const formattedTimes = formatTimeSlots(selectedTimeSlots);
-    
-    setBookingDetails({
-      sport: selectedCourt,
-      date: formattedDate,
-      time: formattedTimes,
+const API_URL = 'http://localhost:3000/userReservation'; // 🛠️ 실제 IP로 변경해야 함!
+const router = useRouter();
+
+const handleBooking = async () => {
+  if (!selectedCourt || !formattedDate || selectedTimeSlots.length === 0) {
+    Alert.alert('Error', 'Please fill in all the fields');
+    return;
+  }
+
+  const formattedTimes = formatTimeSlots(selectedTimeSlots);
+  
+  const reservationData = {
+    sport: selectedCourt,
+    date: formattedDate,
+    time: formattedTimes,
+  };
+
+  try {
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(reservationData),
     });
 
-    Alert.alert('Success', `Your booking for ${selectedCourt} on ${formattedDate} at ${formattedTimes} has been confirmed!`);
+    const responseData = await response.json();
 
-  };
+    if (response.ok) {
+      Alert.alert('Success', `Your booking for ${selectedCourt} on ${formattedDate} at ${formattedTimes} has been confirmed!`, [
+        { text: 'OK', onPress: () => router.push({ pathname: '/explore', params: { bookingDetails: reservationData } }) },
+      ]);
+      setSelectedCourt('');
+      setFormattedDate('');
+      setSelectedTimeSlots([]);
+    } else {
+      Alert.alert('Booking Failed', responseData.message || 'Something went wrong. Please try again.');
+    }
+  } catch (error) {
+    console.error('Booking Error:', error);
+    Alert.alert('Error', 'Could not connect to the server. Please check your internet connection.');
+  }
+};
+
+  
 
   // ✅ Court Selection
   const renderCourtItem = ({ item }) => (

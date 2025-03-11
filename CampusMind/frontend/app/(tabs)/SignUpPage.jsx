@@ -1,5 +1,6 @@
+// SignUpPage.jsx
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Keyboard, TouchableWithoutFeedback  } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 
 const SignUpScreen = () => {
@@ -41,72 +42,74 @@ const SignUpScreen = () => {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.header}>Sign Up</Text>
-      <Text style={styles.sub_header}>Create an account</Text>
-      
-      <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.input}
-          placeholder="First Name"
-          placeholderTextColor="#999"
-          value={firstName}
-          onChangeText={setFirstName}
-        />
-      </View>
-      
-      <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.input}
-          placeholder="Last Name"
-          placeholderTextColor="#999"
-          value={lastName}
-          onChangeText={setLastName}
-        />
-      </View>
-      
-      <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.input}
-          placeholder="CID"
-          placeholderTextColor="#999"
-          value={CID}
-          onChangeText={setCID}
-        />
-      </View>
-      
-      <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.input}
-          placeholder="Email"
-          placeholderTextColor="#999"
-          keyboardType="email-address"
-          autoCapitalize="none"
-          value={email}
-          onChangeText={setEmail}
-        />
-      </View>
-      
-      <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.input}
-          placeholder="Password"
-          placeholderTextColor="#999"
-          secureTextEntry
-          value={password}
-          onChangeText={setPassword}
-        />
-      </View>
-      
-      <TouchableOpacity style={styles.button_signUp} onPress={handleSignUp}>
-        <Text style={styles.buttonText}>Sign Up</Text>
-      </TouchableOpacity>
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      <View style={styles.container}>
+        <Text style={styles.header}>Sign Up</Text>
+        <Text style={styles.sub_header}>Create an account</Text>
+        
+        <View style={styles.inputContainer}>
+          <TextInput
+            style={styles.input}
+            placeholder="First Name"
+            placeholderTextColor="#999"
+            value={firstName}
+            onChangeText={setFirstName}
+          />
+        </View>
+        
+        <View style={styles.inputContainer}>
+          <TextInput
+            style={styles.input}
+            placeholder="Last Name"
+            placeholderTextColor="#999"
+            value={lastName}
+            onChangeText={setLastName}
+          />
+        </View>
+        
+        <View style={styles.inputContainer}>
+          <TextInput
+            style={styles.input}
+            placeholder="CID"
+            placeholderTextColor="#999"
+            value={CID}
+            onChangeText={setCID}
+          />
+        </View>
+        
+        <View style={styles.inputContainer}>
+          <TextInput
+            style={styles.input}
+            placeholder="Email"
+            placeholderTextColor="#999"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            value={email}
+            onChangeText={setEmail}
+          />
+        </View>
+        
+        <View style={styles.inputContainer}>
+          <TextInput
+            style={styles.input}
+            placeholder="Password"
+            placeholderTextColor="#999"
+            secureTextEntry
+            value={password}
+            onChangeText={setPassword}
+          />
+        </View>
+        
+        <TouchableOpacity style={styles.button_signUp} onPress={handleSignUp}>
+          <Text style={styles.buttonText}>Sign Up</Text>
+        </TouchableOpacity>
 
-      {/* Button to go back to Login */}
-      <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-        <Text style={styles.backButtonText}>Back to Login</Text>
-      </TouchableOpacity>
-    </View>
+        {/* Button to go back to Login */}
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+          <Text style={styles.backButtonText}>Back to Login</Text>
+        </TouchableOpacity>
+      </View>
+    </TouchableWithoutFeedback>
   );
 };
 
