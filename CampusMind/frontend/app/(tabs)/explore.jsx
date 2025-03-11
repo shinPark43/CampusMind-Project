@@ -1,4 +1,4 @@
-// HomePage.jsx
+// explore.jsx
 import React, { useRef, useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Dimensions, Animated, TouchableOpacity, PanResponder } from 'react-native';
 import { Link } from 'expo-router';
@@ -8,21 +8,19 @@ import courtImage from '../../assets/images/court.jpg';
 import marketplaceImage from '../../assets/images/marketplace.jpg';
 import trackerImage from '../../assets/images/tracker.jpg';
 import { Image } from 'react-native';
-import { useBooking } from './BookingContext';
-
+import { useLocalSearchParams } from 'expo-router';
 
 
 const { width, height } = Dimensions.get('window');
 
 
 const HomePage = () => {
+  const { bookingDetails } = useLocalSearchParams() || {};
   const [features, setFeatures] = useState([
     { title: 'Book a Court', link: 'BookingPage', image: courtImage }, 
     { title: 'Marketplace', link: 'MarketplacePage', image: marketplaceImage },  
     { title: 'Building Tracker', link: 'TrackingPage', image: trackerImage },  
   ]);
-
-  const { bookingDetails } = useBooking();
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const scrollX = useRef(new Animated.Value(0)).current;
@@ -39,7 +37,6 @@ const HomePage = () => {
         animateCard(0);
       }
     }, 5000);
-  
     return () => clearInterval(interval);
   }, [currentIndex]);
 
@@ -133,9 +130,15 @@ const HomePage = () => {
         {bookingDetails ? (
           <View style={styles.bookingSummary}>
             <Text style={styles.summaryTitle}>Booking Summary</Text>
-            <Text style={styles.summaryText}>Sport: {bookingDetails.sport}</Text>
-            <Text style={styles.summaryText}>Date: {bookingDetails.date}</Text>
-            <Text style={styles.summaryText}>Time: {bookingDetails.time}</Text>
+            <Text style={styles.summaryText}>
+              Sport: {bookingDetails.sport ? String(bookingDetails.sport) : 'N/A'}
+            </Text>
+            <Text style={styles.summaryText}>
+              Date: {bookingDetails.date ? String(bookingDetails.date) : 'N/A'}
+            </Text>
+            <Text style={styles.summaryText}>
+              Time: {bookingDetails.time ? String(bookingDetails.time) : 'N/A'}
+            </Text>
           </View>
         ) : (
           <View style={styles.bookingSummary}>

@@ -1,3 +1,4 @@
+// WeatherSidget.jsx
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Dimensions, ActivityIndicator, Image, useWindowDimensions, TouchableOpacity, Modal, Pressable, Switch } from 'react-native';
 import * as Location from 'expo-location';

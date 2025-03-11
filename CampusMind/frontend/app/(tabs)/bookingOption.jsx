@@ -1,3 +1,4 @@
+//bookingOption.jsx
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Image } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
