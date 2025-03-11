@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Alert, FlatList, Image, useWi
 import { Link } from 'expo-router';
 import { COLORS } from './theme';
 import { Calendar } from 'react-native-calendars';
-import { useBooking } from './BookingContext';
+// import { useBooking } from './BookingContext';
 
 const COURTS = [
   { name: 'Badminton', icon: 'https://img.icons8.com/color/48/000000/badminton.png' },

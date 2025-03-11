@@ -7,13 +7,11 @@ import { IconSymbol } from '@/components/ui/IconSymbol';
 import TabBarBackground from '@/components/ui/TabBarBackground';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
-import { BookingProvider } from './BookingContext'; 
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
 
   return (
-    <BookingProvider> {/* ✅ Wrap everything inside BookingProvider */}
       <Tabs
         screenOptions={{
           tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
@@ -58,6 +56,5 @@ export default function TabLayout() {
           }}
         />
       </Tabs>
-    </BookingProvider> /* ✅ Close BookingProvider here */
   );
 }
