@@ -79,45 +79,22 @@ const BookingPage = () => {
 
   const { setBookingDetails } = useBooking();
   // ✅ Booking Confirmation
-  const handleBooking = async () => {
+  const handleBooking = () => {
     if (!selectedCourt || !formattedDate || selectedTimeSlots.length === 0) {
       Alert.alert('Error', 'Please fill in all the fields');
       return;
     }
-  
-    const formattedTimes = formatTimeSlots(selectedTimeSlots); // Format time slots into a readable format
-  
-    const reservationData = {
+    const formattedTimes = formatTimeSlots(selectedTimeSlots);
+    
+    setBookingDetails({
       sport: selectedCourt,
       date: formattedDate,
-      hours: formattedTimes,
-    };
-  
-    try {
-      const response = await fetch('https://localhost:3000/userReservation', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(reservationData),
-      });
-  
-      const responseData = await response.json();
-  
-      if (response.ok) {
-        Alert.alert('Success', `Your booking for ${selectedCourt} on ${formattedDate} at ${formattedTimes} has been confirmed!`);
-        setSelectedCourt('');
-        setFormattedDate('');
-        setSelectedTimeSlots([]);
-      } else {
-        Alert.alert('Booking Failed', responseData.message || 'Something went wrong. Please try again.');
-      }
-    } catch (error) {
-      Alert.alert('Error', 'Could not connect to the server. Please check your internet connection.');
-      console.error('Booking Error:', error);
-    }
+      time: formattedTimes,
+    });
+
+    Alert.alert('Success', `Your booking for ${selectedCourt} on ${formattedDate} at ${formattedTimes} has been confirmed!`);
+
   };
-  
 
   // ✅ Court Selection
   const renderCourtItem = ({ item }) => (
