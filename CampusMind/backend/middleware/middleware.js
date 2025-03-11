@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import { User } from '../models/User.js'; // Ensure the User model is imported from the models folder
+import { User } from '../models/userModel.js'; // Ensure the User model is imported from the models folder
 
 // Middleware for reservationSchema
 export const reservationMiddleware = (schema) => {
@@ -10,7 +10,7 @@ export const reservationMiddleware = (schema) => {
         }
         next();
     });
-};
+};// don't need this one?
 
 // Authentication middleware
 export const auth = async (req, res, next) => {
@@ -22,15 +22,15 @@ export const auth = async (req, res, next) => {
         const decoded = jwt.verify(token, process.env.JWT_KEY); // Use JWT_KEY
         
         // Find the user by the decoded token and ensure the token is still valid
-        const user = await User.findOne({ _id: decoded._id, 'tokens.token': token });
-
+        // const user = await User.findOne({ _id: decoded._id, 'tokens.token': token });
+        const user = await User.findOne({ _id: decoded._id });
         // If no user is found, throw an error
         if (!user) {
             throw new Error();
         }
 
         // Attach the token and user to the request object
-        req.token = token;
+        
         req.user = user;
         
         // Call the next middleware function in the stack

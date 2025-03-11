@@ -1,5 +1,6 @@
 import { Router } from 'express';
-import { SportEquipment, Reservation } from '../db/db.js'; // Ensure the SportEquipment and Reservation models are imported from db.js
+import { SportEquipment } from '../models/sportEquipmentModel.js'; // Ensure the SportEquipment and Reservation models are imported from db.js
+import { Reservation } from '../models/reservationModel.js'; // Ensure the SportEquipment and Reservation models are imported from db.js
 
 const router = Router();
 

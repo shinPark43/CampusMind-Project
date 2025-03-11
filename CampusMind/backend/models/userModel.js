@@ -39,14 +39,7 @@ const userSchema = new Schema({
         required: true,
         trim: true,
         unique: true
-    },
-    tokens: [{
-        token: {
-            type: String,
-            required: true,
-            default: [] // Ensures token field is never null
-        }
-    }]
+    }
 });
 
 // Pre-save middleware to hash the password
@@ -62,17 +55,10 @@ userSchema.pre('save', async function (next) {
 userSchema.methods.generateAuthToken = async function() {
     const user = this;
 
-    // Remove any null/undefined tokens to prevent duplicates
-    user.tokens = user.tokens.filter(tokenObj => tokenObj.token);
-
-    // Ensure `tokens` is initialized before pushing a new token
-    if (!Array.isArray(user.tokens) || user.tokens.length === 0) {
-        user.tokens = [];
-    }
-
     // Generate and save a new token
-    const token = jwt.sign({ _id: user._id.toString() }, process.env.JWT_KEY);
-    user.tokens.push({ token });
+    const token = jwt.sign({ _id: user._id.toString() }, process.env.JWT_KEY, { expiresIn: '15m' });
+    
+    
     await user.save();
 
     console.log('New token generated and saved:');
