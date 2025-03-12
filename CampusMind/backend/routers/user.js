@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { User } from '../db/db.js'; // Ensure the User model is imported from db.js
+import { User } from '../models/userModel.js'; // Import the User model
 
 const router = Router();
 
@@ -26,12 +26,13 @@ router.post('/createUser', async (req, res) => {
             password: password
         }); // Create a new user
         
-        const token = await user.generateAuthToken(); // Generate an authentication token
+        
         await user.save(); // Save the user
 
         console.log('User created:', user); // Log the user
 
-        res.status(201).send({ user, token }); // Respond with the user and token
+        // res.status(201).send({ user, token }); // Respond with the user and token
+        res.status(201).send({ user }); // Respond with the user and token
     } catch (error) {
         console.error('Error creating user:', error);
         res.status(400).send({ error: error.message }); // Respond with an error
@@ -50,7 +51,8 @@ router.post('/userLogin', async (req, res) => {
             return res.status(401).send({ error: 'Login failed! Check authentication credentials' });
         }
         const token = await user.generateAuthToken();
-        res.status(200).send({ user, token });
+        
+        return res.json({ token }); // Respond with the token and client should store it in local storage like await AsyncStorage.setItem("token", data.token); and use it in the headers like await AsyncStorage.getItem("token");
     } catch (error) {
         console.error(error);
         res.status(400).send({ error: 'An error occurred' });
