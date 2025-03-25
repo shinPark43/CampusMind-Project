@@ -16,9 +16,16 @@ const LoginPage = () => {
   const handleLogin = async() => {
     if (email === '' || password === '') {
       Alert.alert('Error', 'Please enter both email and password.');
-    } else {
+    } 
+    else if (!email.endsWith('@angelo.edu')) {
+      Alert.alert('Error', 'Email must end with @angelo.edu.')
+    }   
+    else if (password.length < 8) {
+    Alert.alert('Error', 'Password must be at least 8 characters long.');
+    } 
+    else {
       try {
-        const response = await fetch('http://localhost:3000/userLogin', {
+        const response = await fetch('http://192.168.1.167:3000/users/userLogin', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

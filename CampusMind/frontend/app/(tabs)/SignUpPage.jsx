@@ -15,8 +15,21 @@ const SignUpScreen = () => {
 
   // Function to handle the sign-up action
   const handleSignUp = async () => {
-    try {
-      const response = await fetch('http://localhost:3000/createUser', {
+    if (firstName === '' || lastName === '' || CID === '' || email === '' || password === '') {
+      Alert.alert('Error', 'Please enter the information. All fields are required.');
+    } 
+    else if (!email.endsWith('@angelo.edu')) {
+      Alert.alert('Error', 'Email must end with @angelo.edu.')
+    }   
+    else if (password.length < 8) {
+    Alert.alert('Error', 'Password must be at least 8 characters long.');
+    }
+    else if (!/^\d{8}$/.test(CID)) {
+      Alert.alert('Error', 'CID must be exactly 8 digits long and contain only numbers.');
+    }
+    else 
+    { try {
+      const response = await fetch('http://192.168.1.167:3000/users/createUser', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -38,6 +51,7 @@ const SignUpScreen = () => {
     } catch (error) {
       console.error(error);
       Alert.alert("Error", "Unable to connect to the server");
+      }
     }
   };
 
