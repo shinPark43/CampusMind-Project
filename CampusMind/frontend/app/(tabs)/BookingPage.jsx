@@ -80,7 +80,7 @@ const BookingPage = () => {
   const [bookingDetails, setBookingDetails] = useState(null);
 
   // ✅ Booking Confirmation
-const API_URL = 'http://localhost:3000/userReservation'; // 🛠️ 실제 IP로 변경해야 함!
+const API_URL = 'http://192.168.1.167:3000/reservations/userReservation'; // 🛠️ 실제 IP로 변경해야 함!
 const router = useRouter();
 
 const handleBooking = async () => {
@@ -100,7 +100,9 @@ const handleBooking = async () => {
   try {
     const response = await fetch(API_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json' 
+      },
       body: JSON.stringify(reservationData),
     });
 

@@ -160,7 +160,7 @@ export default function BookingScreen() {
 
   const handleSubmit = async (data) => {
     try {
-      const response = await fetch('https://your-backend.com/createReservation', {
+      const response = await fetch('https://192.168.1.167:3000/reservations/createReservation', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
