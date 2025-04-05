@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { Link } from 'expo-router'
 import Icon from 'react-native-vector-icons/Feather';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const LoginPage = () => {
   const [passwordVisible, setPasswordVisible] = useState(false);
@@ -25,7 +26,7 @@ const LoginPage = () => {
     } 
     else {
       try {
-        const response = await fetch('http://192.168.1.167:3000/users/userLogin', {
+        const response = await fetch('http://10.80.85.41:3000/users/userLogin', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -36,6 +37,7 @@ const LoginPage = () => {
         const data = await response.json();
 
         if (response.ok) {
+          await AsyncStorage.setItem("token", data.token);
           Alert.alert('Success', 'Login successful');
         } else {
           Alert.alert('Error', data.error || 'Login failed');

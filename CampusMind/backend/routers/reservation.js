@@ -10,7 +10,8 @@ const router = Router();
 router.post('/createReservation', auth, async (req, res) => {
     try {
         const { sportName, date, time } = req.body;
-        // const token = req.body.token;
+        console.log("Received data:", sportName, date, time);
+        // // const token = req.body.token;
         const sport = await Sport.findOne({ sport_name: sportName });
         if (!sport) {
             console.log("Error: Sport not found.");
@@ -19,6 +20,7 @@ router.post('/createReservation', auth, async (req, res) => {
         const existingReservation = await Reservation.findOne({ 
             user_id: req.user._id,
             sport_id: sport._id,
+            // sportName,
             date,
             time 
         })
@@ -30,7 +32,8 @@ router.post('/createReservation', auth, async (req, res) => {
 
         const reservation = new Reservation({ 
             user_id: req.user._id, 
-            sport_id: sport._id, 
+            sport_id: sport._id,
+            // sportName, 
             date, 
             time
         });

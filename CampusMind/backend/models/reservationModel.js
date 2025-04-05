@@ -8,7 +8,9 @@ const reservationSchema = new Schema({
     // user_id: { type: Schema.Types.ObjectId, required: true, trim: true, ref: 'User' },
     user_id: { type: Schema.Types.ObjectId, required: true, trim: true, ref: 'User' },
     sport_id: { type: Schema.Types.ObjectId, required: true, trim: true, ref: 'Sport' },
-    date: { type: Date, required: true },
+    // sportName: { type: String, required: true},
+
+    date: { type: String, required: true },
     time: { type: String, required: true },
 });
 

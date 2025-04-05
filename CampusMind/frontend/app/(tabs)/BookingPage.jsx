@@ -5,6 +5,7 @@ import { Link } from 'expo-router';
 import { COLORS } from './theme';
 import { Calendar } from 'react-native-calendars';
 import { useRouter } from 'expo-router';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const COURTS = [
   { name: 'Badminton', icon: 'https://img.icons8.com/color/48/000000/badminton.png' },
@@ -80,7 +81,7 @@ const BookingPage = () => {
   const [bookingDetails, setBookingDetails] = useState(null);
 
   // ✅ Booking Confirmation
-const API_URL = 'http://192.168.1.167:3000/reservations/userReservation'; // 🛠️ 실제 IP로 변경해야 함!
+const API_URL = 'http://10.80.85.41:3000/reservations/createReservation'; // 🛠️ 실제 IP로 변경해야 함!
 const router = useRouter();
 
 const handleBooking = async () => {
@@ -92,16 +93,25 @@ const handleBooking = async () => {
   const formattedTimes = formatTimeSlots(selectedTimeSlots);
   
   const reservationData = {
-    sport: selectedCourt,
+    sportName: selectedCourt,
     date: formattedDate,
     time: formattedTimes,
   };
 
   try {
+
+    const token = await AsyncStorage.getItem("token");
+
+    if (!token) {
+        Alert.alert("Error", "No token found!");
+        return;
+    }
+
     const response = await fetch(API_URL, {
       method: 'POST',
       headers: { 
-        'Content-Type': 'application/json' 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify(reservationData),
     });
