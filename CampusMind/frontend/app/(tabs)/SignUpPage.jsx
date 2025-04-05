@@ -29,7 +29,7 @@ const SignUpScreen = () => {
     }
     else 
     { try {
-      const response = await fetch('http://192.168.1.167:3000/users/createUser', {
+      const response = await fetch('http://10.80.85.41:3000/users/createUser', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
