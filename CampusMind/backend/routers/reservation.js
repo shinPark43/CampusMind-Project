@@ -11,29 +11,28 @@ router.post('/createReservation', auth, async (req, res) => {
     try {
         const { sportName, date, time } = req.body;
         console.log("Received data:", sportName, date, time);
-        // // const token = req.body.token;
+
         const sport = await Sport.findOne({ sport_name: sportName });
         if (!sport) {
             console.log("Error: Sport not found.");
             return res.status(404).json({ error: "Sport not found." });
         }
+
         const existingReservation = await Reservation.findOne({ 
             user_id: req.user._id,
             sport_id: sport._id,
-            // sportName,
             date,
             time 
-        })
+        });
 
         if (existingReservation) {
             console.log("Error: You already have a reservation for this game on this date and time.");
-            return;
+            return res.status(400).json({ error: "You already have a reservation for this game on this date and time." });
         }
 
         const reservation = new Reservation({ 
             user_id: req.user._id, 
             sport_id: sport._id,
-            // sportName, 
             date, 
             time
         });
@@ -41,10 +40,11 @@ router.post('/createReservation', auth, async (req, res) => {
         await reservation.save();
 
         console.log("Reservation added successfully!");
+        return res.status(201).json({ message: "Reservation added successfully!" });
     } catch (error) {
         console.error("Error adding reservation:", error.message);
+        return res.status(500).json({ error: "Internal server error. Please try again later." });
     }
-
 });
 
 router.get('/getUserReservation', auth, async (req, res) => {

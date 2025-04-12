@@ -14,14 +14,30 @@ const COURTS = [
   { name: 'Pickleball', icon: 'https://img.icons8.com/color/48/000000/pickle-ball.png' },
 ];
 
-// Generate 30-Minute Time Slots from 07:00 to 23:00
-const generateTimeSlots = (start = '07:00', end = '23:00') => {
+// Generate 30-Minute Time Slots based on day of the week
+const generateTimeSlots = (dateString) => {
+  const date = new Date(dateString);
+  const dayOfWeek = date.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+
+  let start, end;
+
+  if (dayOfWeek >= 1 && dayOfWeek <= 4) { // Monday to Thursday
+    start = '13:00'; // 1 PM
+    end = '23:00';   // 11 PM
+  } else if (dayOfWeek === 5) { // Friday
+    start = '13:00'; // 1 PM
+    end = '20:00';   // 8 PM
+  } else { // Saturday and Sunday
+    start = '12:00'; // 12 PM
+    end = '20:00';   // 8 PM
+  }
+
   const slots = [];
   let [hour, minute] = start.split(':').map(Number);
   const [endHour, endMinute] = end.split(':').map(Number);
 
-  while (hour < endHour || (hour === endHour && minute <= endMinute)) {
-    const time = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+  while (hour < endHour || (hour === endHour && minute < endMinute)) {
+    const time = `${hour}:${String(minute).padStart(2, '0')}`; // Use hour directly
     slots.push(time);
     minute += 30;
     if (minute === 60) {
@@ -29,6 +45,7 @@ const generateTimeSlots = (start = '07:00', end = '23:00') => {
       hour++;
     }
   }
+
   return slots;
 };
 
@@ -65,7 +82,8 @@ const formatTimeSlots = (slots) => {
 const formatTime = (totalMinutes) => {
   const hour = Math.floor(totalMinutes / 60);
   const minute = totalMinutes % 60;
-  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+  const formattedHour = hour > 12 ? hour - 12 : hour; // Convert to 12-hour format
+  return `${formattedHour}:${String(minute).padStart(2, '0')} PM`; // Add "PM"
 };
 
 const BookingPage = () => {
@@ -77,11 +95,10 @@ const BookingPage = () => {
   const [tempSelectedTimeSlots, setTempSelectedTimeSlots] = useState([]); // ✅ Temporary State for Time Picker
   const [isCalendarVisible, setCalendarVisible] = useState(false);
   const [isTimePickerVisible, setTimePickerVisible] = useState(false);
-  const timeSlots = generateTimeSlots();
   const [bookingDetails, setBookingDetails] = useState(null);
 
   // ✅ Booking Confirmation
-const API_URL = 'http://10.80.85.41:3000/reservations/createReservation'; // 🛠️ 실제 IP로 변경해야 함!
+const API_URL = 'http://10.80.89.61:3000/reservations/createReservation'; // 🛠️ 실제 IP로 변경해야 함!
 const router = useRouter();
 
 const handleBooking = async () => {
@@ -91,7 +108,7 @@ const handleBooking = async () => {
   }
 
   const formattedTimes = formatTimeSlots(selectedTimeSlots);
-  
+
   const reservationData = {
     sportName: selectedCourt,
     date: formattedDate,
@@ -99,32 +116,50 @@ const handleBooking = async () => {
   };
 
   try {
-
     const token = await AsyncStorage.getItem("token");
 
     if (!token) {
-        Alert.alert("Error", "No token found!");
-        return;
+      Alert.alert("Error", "No token found!");
+      return;
     }
+
+    console.log('Sending reservation data:', reservationData);
 
     const response = await fetch(API_URL, {
       method: 'POST',
-      headers: { 
+      headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
+        'Authorization': `Bearer ${token}`,
       },
       body: JSON.stringify(reservationData),
     });
 
     const responseData = await response.json();
+    console.log('Response status:', response.status);
+    console.log('Response data:', responseData);
 
-    if (response.ok) {
-      Alert.alert('Success', `Your booking for ${selectedCourt} on ${formattedDate} at ${formattedTimes} has been confirmed!`, [
-        { text: 'OK', onPress: () => router.push({ pathname: '/explore', params: { bookingDetails: reservationData } }) },
-      ]);
-      setSelectedCourt('');
-      setFormattedDate('');
-      setSelectedTimeSlots([]);
+    if (response.ok || response.status === 201) {
+      // Show success notification
+      Alert.alert(
+        'Booking Confirmed',
+        `Your booking for ${selectedCourt} on ${formattedDate} at ${formattedTimes} has been successfully confirmed!`,
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              // Navigate back to the homepage
+              router.push('/explore');
+
+              // Clear booking details
+              setSelectedCourt('');
+              setFormattedDate('');
+              setSelectedTimeSlots([]);
+              setTempSelectedDate('');
+              setTempSelectedTimeSlots([]);
+            },
+          },
+        ]
+      );
     } else {
       Alert.alert('Booking Failed', responseData.message || 'Something went wrong. Please try again.');
     }
@@ -162,11 +197,20 @@ const handleBooking = async () => {
   
   const hideCalendar = () => setCalendarVisible(false);
 
-  const handleDateSelect = (day) => setTempSelectedDate(day.dateString);
+  const handleDateSelect = (day) => {
+    const date = new Date(day.dateString);
+    const options = { weekday: 'short' }; // Get short weekday name (e.g., "Wed")
+    const dayOfWeek = date.toLocaleDateString('en-US', options);
+    const selectedDate = `${day.dateString} (${dayOfWeek})`;
+
+    setTempSelectedDate(day.dateString); // Store the selected date in 'YYYY-MM-DD' format
+  };
+
   const confirmDate = () => {
     setFormattedDate(tempSelectedDate);
     hideCalendar();
   };
+
   const cancelDateSelection = () => {
     setTempSelectedDate('');
     hideCalendar();
@@ -182,6 +226,7 @@ const handleBooking = async () => {
       Alert.alert('Attention', 'Please select a date first');
       return;
     }
+    const slots = generateTimeSlots(formattedDate.split(' ')[0]); // Pass only the date part
     setTempSelectedTimeSlots([...selectedTimeSlots]);
     setTimePickerVisible(true);
   };
@@ -305,7 +350,7 @@ const handleBooking = async () => {
           <View style={styles.modalContainer}>
             <Text style={styles.timePickerHeader}>Select Time Slots (3 Hours Max)</Text>
             <ScrollView contentContainerStyle={styles.timeSlotGrid}>
-              {timeSlots.map((time) => (
+              {generateTimeSlots(formattedDate).map((time) => (
                 <TouchableOpacity
                   key={time}
                   style={[

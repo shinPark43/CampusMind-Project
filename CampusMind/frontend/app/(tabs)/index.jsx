@@ -26,7 +26,7 @@ const LoginPage = () => {
     } 
     else {
       try {
-        const response = await fetch('http://10.80.85.41:3000/users/userLogin', {
+        const response = await fetch('http://10.80.89.61:3000/users/userLogin', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
