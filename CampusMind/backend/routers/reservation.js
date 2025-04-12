@@ -56,6 +56,7 @@ router.get('/getUserReservation', auth, async (req, res) => {
 
         // Map the reservations to include only sport_name, date, and time
         const formattedReservations = reservations.map(reservation => ({
+            sportID : reservation.sport_id._id,
             sportName: reservation.sport_id.sport_name,
             date: reservation.date,
             time: reservation.time
