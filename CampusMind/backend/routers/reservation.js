@@ -47,5 +47,27 @@ router.post('/createReservation', auth, async (req, res) => {
 
 });
 
+router.get('/getUserReservation', auth, async (req, res) => {
+    try {
+        const userId = req.user._id; // Get the user ID from the token
+        const reservations = await Reservation.find({ user_id: userId })
+            .populate('sport_id', 'sport_name') 
+            .sort({ date: 1, time: 1 }); // Sort by date (ascending) and then by time (ascending)
+
+        // Map the reservations to include only sport_name, date, and time
+        const formattedReservations = reservations.map(reservation => ({
+            sportName: reservation.sport_id.sport_name,
+            date: reservation.date,
+            time: reservation.time
+        }));
+
+        console.log("Formatted Reservations (Closest First):", formattedReservations);
+
+        res.json(formattedReservations);
+    } catch (error) {
+        console.error("Error fetching reservations:", error.message);
+        res.status(500).json({ error: "Internal server error" });
+    }
+});
 
 export default router;
