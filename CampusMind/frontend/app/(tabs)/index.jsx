@@ -1,44 +1,58 @@
 // index.jsx
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
-import { Link } from 'expo-router'
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+  Keyboard,
+  TouchableWithoutFeedback,
+  Platform,
+} from 'react-native';
+import { Link, useRouter } from 'expo-router';
 import Icon from 'react-native-vector-icons/Feather';
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view'; // Import the library
 
 const LoginPage = () => {
+  const router = useRouter();
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
   const togglePasswordVisibility = () => {
     setPasswordVisible(!passwordVisible);
-  }
+  };
 
-  const handleLogin = async() => {
+  const handleLogin = async () => {
     if (email === '' || password === '') {
       Alert.alert('Error', 'Please enter both email and password.');
-    } 
-    else if (!email.endsWith('@angelo.edu')) {
-      Alert.alert('Error', 'Email must end with @angelo.edu.')
-    }   
-    else if (password.length < 8) {
-    Alert.alert('Error', 'Password must be at least 8 characters long.');
-    } 
-    else {
+    } else if (!email.endsWith('@angelo.edu')) {
+      Alert.alert('Error', 'Email must end with @angelo.edu.');
+    } else if (password.length < 8) {
+      Alert.alert('Error', 'Password must be at least 8 characters long.');
+    } else {
       try {
         const response = await fetch('http://10.80.89.61:3000/users/userLogin', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ email, password}),
+          body: JSON.stringify({ email, password }),
         });
-        
+
         const data = await response.json();
 
         if (response.ok) {
-          await AsyncStorage.setItem("token", data.token);
-          Alert.alert('Success', 'Login successful');
+          await AsyncStorage.setItem('token', data.token);
+          Alert.alert('Success', 'Login successful', [
+            {
+              text: 'OK',
+              onPress: () => router.push('/explore'),
+            },
+          ]);
         } else {
           Alert.alert('Error', data.error || 'Login failed');
         }
@@ -54,59 +68,77 @@ const LoginPage = () => {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.iconContainer}>
-        <Icon name="message-square" size={70} color='#fff'/>
-      </View>
-      <Text style={styles.header}>CampusMind</Text>
-      <Text style={styles.sub_header}>Welcome Back.</Text>
+    <KeyboardAwareScrollView
+      contentContainerStyle={styles.container}
+      enableOnAndroid={true} // Enable smooth behavior on Android
+      extraScrollHeight={100} // Add extra space above the input box
+      keyboardShouldPersistTaps="handled" // Dismiss keyboard on tap outside
+    >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <View style={styles.innerContainer}>
+          <View>
+            <View style={styles.iconContainer}>
+              <Icon name="message-square" size={70} color="#fff" />
+            </View>
+            <Text style={styles.header}>CampusMind</Text>
+            <Text style={styles.sub_header}>Welcome Back.</Text>
 
-      <View style={styles.inputContainer}>
-        <Icon name="mail" size={20} color="#888" style={styles.icon}/>
-        <TextInput
-          style={styles.input}
-          placeholder="E-mail"
-          placeholderTextColor="#888"
-          value={email}
-          onChangeText={setEmail}
-        />
-      </View>
+            <View style={styles.inputContainer}>
+              <Icon name="mail" size={20} color="#888" style={styles.icon} />
+              <TextInput
+                style={styles.input}
+                placeholder="E-mail"
+                placeholderTextColor="#888"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+            </View>
 
-      <View style={styles.inputContainer}>
-        <Icon name="lock" size={20} color="#888" style={styles.icon}/>
-        <TextInput
-          style={styles.input}
-          placeholder="Password"
-          placeholderTextColor="#888"
-          secureTextEntry={!passwordVisible}
-          value={password}
-          onChangeText={setPassword}
-        />
-        <TouchableOpacity onPress={togglePasswordVisibility} style={styles.eyeIcon}>
-          <Icon name={passwordVisible ? 'eye-off' : 'eye'} size={20} color='#888' />
-        </TouchableOpacity>
-      </View>
+            <View style={styles.inputContainer}>
+              <Icon name="lock" size={20} color="#888" style={styles.icon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Password"
+                placeholderTextColor="#888"
+                secureTextEntry={!passwordVisible}
+                value={password}
+                onChangeText={setPassword}
+                textContentType="none"
+                autoComplete="off"
+                importantForAutofill="no"
+              />
+              <TouchableOpacity onPress={togglePasswordVisibility} style={styles.eyeIcon}>
+                <Icon name={passwordVisible ? 'eye-off' : 'eye'} size={20} color="#888" />
+              </TouchableOpacity>
+            </View>
 
-      <View style={styles.forgot_password_container}>
-        <TouchableOpacity onPress={handleForgotPassword}>
-          <Text style={styles.forgot_password}>Forgot Password?</Text>
-        </TouchableOpacity>
-      </View>
+            <View style={styles.forgot_password_container}>
+              <TouchableOpacity onPress={handleForgotPassword}>
+                <Text style={styles.forgot_password}>Forgot Password?</Text>
+              </TouchableOpacity>
+            </View>
 
-      <Link href="/explore" style={styles.button} onPress={handleLogin}>
-        <Text style={styles.buttonText}>Login</Text>
-      </Link>
+            <TouchableOpacity style={styles.button} onPress={handleLogin}>
+              <Text style={styles.buttonText}>Login</Text>
+            </TouchableOpacity>
 
-      <Link href="/SignUpPage" style={styles.button_signUp}>
-        <Text style={styles.buttonText} numberOfLines={1}>Sign Up</Text>
-      </Link>
-    </View>
+            <Link href="/SignUpPage" style={styles.button_signUp}>
+              <Text style={styles.buttonText} numberOfLines={1}>
+                Sign Up
+              </Text>
+            </Link>
+          </View>
+        </View>
+      </TouchableWithoutFeedback>
+    </KeyboardAwareScrollView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
@@ -117,11 +149,13 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 15,
     color: '#FFF',
+    textAlign: 'center',
   },
   sub_header: {
     fontSize: 14,
     marginBottom: 40,
     color: '#FFF',
+    textAlign: 'center',
   },
   icon: {
     marginRight: 10,
@@ -133,7 +167,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 15,
     marginBottom: 15,
-    // borderBottomColor: '#778DA9',
     borderRadius: 25,
     borderWidth: 1,
     borderColor: '#ddd',
@@ -150,10 +183,12 @@ const styles = StyleSheet.create({
   forgot_password: {
     color: '#FFF',
     fontSize: 12,
+    textAlign: 'right',
   },
   forgot_password_container: {
     width: '100%',
-    alignItems: 'flex-end',
+    marginBottom: 20,
+    alignSelf: 'flex-end',
   },
   button: {
     marginTop: 10,
@@ -161,6 +196,7 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     width: '100%',
     borderRadius: 15,
+    alignSelf: 'center',
   },
   button_signUp: {
     marginTop: 10,
@@ -168,6 +204,7 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     width: '100%',
     borderRadius: 15,
+    alignSelf: 'center',
   },
   buttonText: {
     color: '#fff',
@@ -178,6 +215,10 @@ const styles = StyleSheet.create({
   iconContainer: {
     alignItems: 'center',
     marginBottom: 50,
+  },
+  innerContainer: {
+    width: '100%',           // Full width relative to parent scroll view
+    alignSelf: 'center',    // Center the inner content
   },
 });
 
