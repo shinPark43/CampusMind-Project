@@ -17,6 +17,14 @@ expo-env.d.ts
 *.key
 *.mobileprovision
 
+.env
+.env.*
+
+.cache
+.expo/web/cache/
+
+*.log
+
 # Metro
 .metro-health-check*
 
