@@ -18,7 +18,7 @@ const HomePage = () => {
   const { bookingDetails } = useLocalSearchParams() || {};
   const [features, setFeatures] = useState([
     { title: 'Book a Court', link: 'BookingPage', image: courtImage }, 
-    { title: 'Marketplace', link: 'MarketplacePage', image: marketplaceImage },  
+    { title: 'Marketplace', link: 'Status', image: marketplaceImage },  
     { title: 'Building Tracker', link: 'TrackingPage', image: trackerImage },  
   ]);
 

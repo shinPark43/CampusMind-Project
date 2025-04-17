@@ -35,7 +35,7 @@ const LoginPage = () => {
       Alert.alert('Error', 'Password must be at least 8 characters long.');
     } else {
       try {
-        const response = await fetch('http://10.80.89.61:3000/users/userLogin', {
+        const response = await fetch('http://192.168.1.40:3000/users/userLogin', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
