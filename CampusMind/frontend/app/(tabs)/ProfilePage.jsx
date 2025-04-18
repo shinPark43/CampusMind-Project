@@ -182,7 +182,7 @@ const UserProfilePage = () => {
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.button, { backgroundColor: '#FF5C5C', marginTop: 10 }]}
+                style={[styles.button, { backgroundColor: '#757575', marginTop: 10 }]}
                 onPress={() => setIsEditing(false)} // Cancel edit mode
               >
                 <Text style={styles.buttonText}>Cancel</Text>
@@ -254,7 +254,7 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   button: {
-    marginTop: 10,
+    marginTop: 5,
     backgroundColor: '#778FFF', // Light blue button
     paddingVertical: 15,
     width: '100%',
