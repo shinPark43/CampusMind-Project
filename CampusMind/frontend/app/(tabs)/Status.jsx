@@ -17,7 +17,7 @@ import { Picker } from '@react-native-picker/picker';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { COURTS } from './BookingPage'; // your courts array
 
-const API_URL = 'http://192.168.1.40:3000/reservations';
+const API_URL = 'http://192.168.1.42:3000/reservations';
 
 const StatusPage = () => {
   const [reservations, setReservations] = useState([]);
@@ -277,12 +277,12 @@ const StatusPage = () => {
         </View>
       )}
 
-      <TouchableOpacity
+      {/* <TouchableOpacity
         style={styles.createBtn}
         onPress={() => router.push('/BookingPage')}
       >
         <Text style={styles.btnText}>Create Reservation</Text>
-      </TouchableOpacity>
+      </TouchableOpacity> */}
     </View>
   );
 };
