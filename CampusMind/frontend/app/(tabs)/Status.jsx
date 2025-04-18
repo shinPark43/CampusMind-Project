@@ -263,7 +263,7 @@ const StatusPage = () => {
           />
 
           <TouchableOpacity
-            style={[styles.modifyBtn, { marginTop: 10 }]}
+            style={[styles.modifyBtn, { marginTop: 10 , marginBottom: 5 }]}
             onPress={handleModifyReservation}
           >
             <Text style={styles.btnText}>Save Changes</Text>
@@ -308,10 +308,9 @@ const styles = StyleSheet.create({
   label: { fontWeight: 'bold' },
   actions: { flexDirection: 'row', justifyContent: 'space-between' },
   modifyBtn: {
-    backgroundColor: '#778DA9',
+    backgroundColor: '#1976D2',
     padding: 10,
     borderRadius: 8,
-    marginBottom: 5,
   },
   cancelBtn: {
     backgroundColor: '#E63946',
@@ -324,6 +323,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 15,
     marginTop: 20,
+    paddingBottom: 60,
   },
   fieldLabel: {
     color: '#1B263B',
