@@ -98,7 +98,7 @@ const BookingPage = () => {
   const [bookingDetails, setBookingDetails] = useState(null);
 
   // ✅ Booking Confirmation
-const API_URL = 'http://192.168.1.40:3000/reservations/createReservation'; // 🛠️ 실제 IP로 변경해야 함!
+const API_URL = 'http://192.168.1.167:3000/reservations/createReservation'; // 🛠️ 실제 IP로 변경해야 함!
 const router = useRouter();
 
 const handleBooking = async () => {
