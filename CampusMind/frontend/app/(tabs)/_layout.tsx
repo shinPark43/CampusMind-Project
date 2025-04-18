@@ -28,8 +28,11 @@ export default function TabLayout() {
           shadowOpacity: 0.2,
           shadowRadius: 4,
           elevation: 5, // Elevation for Android
+          justifyContent: 'space-evenly',
         },
-        tabBarItemStyle: { flex: 1 },
+        tabBarItemStyle: { 
+          flex: 1 
+        },
         tabBarLabelStyle: {
           fontSize: 12, // Smaller font for labels
           fontWeight: 'bold',

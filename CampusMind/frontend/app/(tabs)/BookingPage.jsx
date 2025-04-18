@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, FlatList, Image, useWindowDimensions, Modal, ScrollView } from 'react-native';
 import { Link } from 'expo-router';
-import { COLORS } from './theme';
+import { COLORS } from '../components/theme';
 import { Calendar } from 'react-native-calendars';
 import { useRouter } from 'expo-router';
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -98,7 +98,7 @@ const BookingPage = () => {
   const [bookingDetails, setBookingDetails] = useState(null);
 
   // ✅ Booking Confirmation
-const API_URL = 'http://192.168.1.42:3000/reservations/createReservation'; // 🛠️ 실제 IP로 변경해야 함!
+const API_URL = 'http://192.168.1.44:3000/reservations/createReservation'; // 🛠️ 실제 IP로 변경해야 함!
 const router = useRouter();
 
 const handleBooking = async () => {

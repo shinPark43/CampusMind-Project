@@ -13,7 +13,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MaterialIcons } from '@expo/vector-icons'; // For the person icon
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 
-const API_URL = 'http://192.168.1.167:3000/users'; // Replace with your backend URL
+const API_URL = 'http://192.168.1.44:3000/users'; // Replace with your backend URL
 
 const UserProfilePage = () => {
   const [firstName, setFirstName] = useState('');

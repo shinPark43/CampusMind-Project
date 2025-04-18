@@ -2,8 +2,8 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Dimensions, Animated, TouchableOpacity, PanResponder } from 'react-native';
 import { Link } from 'expo-router';
-import { COLORS } from './theme'; // Import COLORS
-import WeatherWidget from './WeatherWidget';
+import { COLORS } from '../components/theme'; // Import COLORS
+import WeatherWidget from '../components/WeatherWidget';
 import courtImage from '../../assets/images/court.jpg';
 import marketplaceImage from '../../assets/images/marketplace.jpg';
 import trackerImage from '../../assets/images/tracker.jpg';
