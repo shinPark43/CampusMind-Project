@@ -17,14 +17,31 @@ export default function TabLayout() {
     <Tabs
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarActiveTintColor: tint,
-        tabBarBackground: TabBarBackground,
-        tabBarStyle: Platform.select({ ios: { position: 'absolute' }, default: {} }),
-        // use HapticTab only for your “real” tabs:
+        tabBarActiveTintColor: "#4A90E2", // Active tab icon color
+        tabBarInactiveTintColor: '#FFF', // Inactive tab icon color
+        tabBarStyle: {
+          backgroundColor: '#000000', // Dark blue background
+          height: 60, // Increased height for a modern look
+          position: 'absolute', // Floating tab bar
+          shadowColor: '#000', // Shadow for elevation
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.2,
+          shadowRadius: 4,
+          elevation: 5, // Elevation for Android
+        },
+        tabBarItemStyle: { flex: 1 },
+        tabBarLabelStyle: {
+          fontSize: 12, // Smaller font for labels
+          fontWeight: 'bold',
+        },
+        tabBarIconStyle: {
+          marginTop: 5, // Add spacing between icon and label
+        },
         tabBarButton:
           route.name === 'explore' ||
           route.name === 'BookingPage' ||
-          route.name === 'Status'
+          route.name === 'Status' ||
+          route.name === 'ProfilePage'
             ? HapticTab
             : () => null,
       })}
@@ -50,15 +67,22 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="info.circle.fill" color={color} />,
         }}
       />
+      <Tabs.Screen
+        name="ProfilePage"
+        options={{
+          title: 'Profile',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="person" color={color} />,
+        }}
+      />
 
-      {/* these two exist in navigation but have no tab button */}
+      {/* Hidden tabs */}
       <Tabs.Screen
         name="index"
-        options={{ title: 'Login' , tabBarStyle: { display: 'none' }, }}
+        options={{ title: 'Login', tabBarStyle: { display: 'none' } }}
       />
       <Tabs.Screen
         name="SignUpPage"
-        options={{ title: 'Sign Up', tabBarStyle: { display: 'none' }, }}
+        options={{ title: 'Sign Up', tabBarStyle: { display: 'none' } }}
       />
     </Tabs>
   );

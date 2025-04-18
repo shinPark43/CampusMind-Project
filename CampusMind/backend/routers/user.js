@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { User } from '../models/userModel.js'; // Import the User model
+import { auth } from '../middleware/middleware.js';
 
 const router = Router();
 
@@ -56,6 +57,67 @@ router.post('/userLogin', async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(400).send({ error: 'An error occurred' });
+    }
+});
+
+// Fetch user profile
+router.get('/getUserProfile', auth, async (req, res) => {
+    try {
+        // Get the authenticated user's ID from the auth middleware
+        const userId = req.user._id;
+
+        // Find the user in the database
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        // Respond with the user's profile data
+        res.status(200).json({
+            firstName: user.first_name,
+            lastName: user.last_name,
+            CID: user.CID,
+            email: user.email,
+        });
+    } catch (error) {
+        console.error('Error fetching user profile:', error.message);
+        res.status(500).json({ error: 'An error occurred while fetching the profile' });
+    }
+});
+
+// Update user profile
+router.put('/updateUserProfile', auth, async (req, res) => {
+    const { firstName, lastName, CID, email } = req.body;
+
+    // Validate required fields
+    if (!firstName || !lastName || !CID || !email) {
+        return res.status(400).json({ error: 'All fields are required' });
+    }
+
+    try {
+        // Get the authenticated user's ID from the auth middleware
+        const userId = req.user._id;
+
+        // Find the user in the database
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        // Update the user's profile fields
+        user.first_name = firstName;
+        user.last_name = lastName;
+        user.CID = CID;
+        user.email = email;
+
+        // Save the updated user to the database
+        await user.save();
+
+        // Respond with a success message
+        res.status(200).json({ message: 'Profile updated successfully' });
+    } catch (error) {
+        console.error('Error updating profile:', error.message);
+        res.status(500).json({ error: 'An error occurred while updating the profile' });
     }
 });
 
