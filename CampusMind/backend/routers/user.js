@@ -68,8 +68,10 @@ router.get('/getUserProfile', auth, async (req, res) => {
 
         // Find the user in the database
         const user = await User.findById(userId);
+
         if (!user) {
-            return res.status(404).json({ error: 'User not found' });
+            console.log("Unauthorized access attempt: User not found");
+            return res.status(403).json({ error: 'Unauthorized access. User not found in the system.' });
         }
 
         // Respond with the user's profile data
@@ -100,8 +102,10 @@ router.put('/updateUserProfile', auth, async (req, res) => {
 
         // Find the user in the database
         const user = await User.findById(userId);
+        
         if (!user) {
-            return res.status(404).json({ error: 'User not found' });
+            console.log("Unauthorized access attempt: User not found");
+            return res.status(403).json({ error: 'Unauthorized access. User not found in the system.' });
         }
 
         // Update the user's profile fields
