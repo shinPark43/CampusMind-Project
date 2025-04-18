@@ -98,7 +98,7 @@ const BookingPage = () => {
   const [bookingDetails, setBookingDetails] = useState(null);
 
   // ✅ Booking Confirmation
-const API_URL = 'http://192.168.1.40:3000/reservations/createReservation'; // 🛠️ 실제 IP로 변경해야 함!
+const API_URL = 'http://192.168.1.42:3000/reservations/createReservation'; // 🛠️ 실제 IP로 변경해야 함!
 const router = useRouter();
 
 const handleBooking = async () => {
@@ -392,7 +392,7 @@ const styles = StyleSheet.create({
     paddingTop: '10%',
     fontSize: 28,
     fontWeight: 'bold',
-    marginBottom: '10%',
+    marginBottom: '5%',
     color: COLORS.textPrimary,
   },
   inform: {
@@ -447,7 +447,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 30,
     borderRadius: 8,
-    marginVertical: 10,
     alignSelf: 'center',
   },
   buttonText: {
