@@ -217,100 +217,108 @@ const StatusPage = () => {
         />
       )}
 
-      {editingReservation && (
-        <View style={styles.editForm}>
-          {/* Sport */}
-          <Text style={styles.fieldLabel}>Sport</Text>
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={sportName}
-              onValueChange={(v) => setSportName(v)}
-              style={styles.picker}
-              itemStyle={styles.pickerItem}
-            >
-              {COURTS.map((c) => (
-                <Picker.Item key={c.name} label={c.name} value={c.name} />
-              ))}
-            </Picker>
-          </View>
+{editingReservation && (
+  <Modal
+    transparent={false} // Full-screen modal
+    animationType="slide"
+    visible={!!editingReservation}
+    onRequestClose={() => setEditingReservation(null)} // Close modal on back press
+  >
+    <View style={styles.fullPageContainer}>
+      <Text style={styles.title}>Edit Reservation</Text>
 
-          {/* Date */}
-          <Text style={styles.fieldLabel}>Date</Text>
-          <TouchableOpacity
-            style={styles.pickerContainer}
-            onPress={openCalendar}
-          >
-            <Text style={{ padding: 10 }}>
-              {date || 'Select Date'}
-            </Text>
-          </TouchableOpacity>
+      {/* Sport */}
+      <Text style={styles.fieldLabel}>Sport</Text>
+      <View style={styles.pickerContainer}>
+        <Picker
+          selectedValue={sportName}
+          onValueChange={(v) => setSportName(v)}
+          style={styles.picker}
+          itemStyle={styles.pickerItem}
+        >
+          {COURTS.map((c) => (
+            <Picker.Item key={c.name} label={c.name} value={c.name} />
+          ))}
+        </Picker>
+      </View>
 
-          {/* Calendar Modal */}
-          <Modal
-            transparent
-            visible={isCalendarVisible}
-            animationType="slide"
-            onRequestClose={closeCalendar}
-          >
-            <View style={styles.modalBg}>
-              <View style={styles.modalBox}>
-                <Calendar
-                  onDayPress={(d) => {
-                    setDate(d.dateString);
-                    closeCalendar();
-                  }}
-                  minDate={new Date().toISOString().split('T')[0]}
-                />
-                <TouchableOpacity
-                  style={[styles.cancelBtn, { marginTop: 10 }]}
-                  onPress={closeCalendar}
-                >
-                  <Text style={styles.btnText}>Cancel</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </Modal>
+      {/* Date */}
+      <Text style={styles.fieldLabel}>Date</Text>
+      <TouchableOpacity
+        style={styles.pickerContainer}
+        onPress={openCalendar}
+      >
+        <Text style={{ padding: 10 }}>{date || 'Select Date'}</Text>
+      </TouchableOpacity>
 
-          {/* Time */}
-          <Text style={styles.fieldLabel}>Time</Text>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+      {/* Calendar Modal */}
+      <Modal
+        transparent
+        visible={isCalendarVisible}
+        animationType="slide"
+        onRequestClose={closeCalendar}
+      >
+        <View style={styles.modalBg}>
+          <View style={styles.modalBox}>
+            <Calendar
+              onDayPress={(d) => {
+                setDate(d.dateString);
+                closeCalendar();
+              }}
+              minDate={new Date().toISOString().split('T')[0]}
+            />
             <TouchableOpacity
-              style={[styles.pickerContainer, { flex: 1, marginRight: 5}]}
-              onPress={openStartTimePicker}
+              style={[styles.cancelBtn, { marginTop: 10 }]}
+              onPress={closeCalendar}
             >
-              <Text style={{ padding: 10 }}>{startTime || 'Start Time'}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.pickerContainer, { flex: 1, marginRight: 5}]}
-              onPress={openEndTimePicker}
-            >
-              <Text style={{ padding: 10 }}>{endTime || 'End Time'}</Text>
+              <Text style={styles.btnText}>Cancel</Text>
             </TouchableOpacity>
           </View>
-
-          {/* Time Picker Modal */}
-          <DateTimePickerModal
-            isVisible={isTimePickerVisible !== false}
-            mode="time"
-            date={new Date()}
-            onConfirm={handleTimeConfirm}
-            onCancel={closeTimePicker}
-          />
-
-          <TouchableOpacity
-            style={[styles.modifyBtn, { marginTop: 10 , marginBottom: 5 }]}
-            onPress={handleModifyReservation}
-          >
-            <Text style={styles.btnText}>Save Changes</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.cancelBtn}
-            onPress={() => setEditingReservation(null)}
-          >
-            <Text style={styles.btnText}>Cancel</Text>
-          </TouchableOpacity>
         </View>
-      )}
+      </Modal>
+
+      {/* Time */}
+      <Text style={styles.fieldLabel}>Time</Text>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+        <TouchableOpacity
+          style={[styles.pickerContainer, { flex: 1, marginRight: 5 }]}
+          onPress={openStartTimePicker}
+        >
+          <Text style={{ padding: 10 }}>{startTime || 'Start Time'}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.pickerContainer, { flex: 1, marginRight: 5 }]}
+          onPress={openEndTimePicker}
+        >
+          <Text style={{ padding: 10 }}>{endTime || 'End Time'}</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Time Picker Modal */}
+      <DateTimePickerModal
+        isVisible={isTimePickerVisible !== false}
+        mode="time"
+        date={new Date()}
+        onConfirm={handleTimeConfirm}
+        onCancel={closeTimePicker}
+      />
+
+      {/* Save and Cancel Buttons */}
+      <TouchableOpacity
+        style={[styles.modifyBtn, { marginTop: 10, marginBottom: 5 }]}
+        onPress={handleModifyReservation}
+      >
+        <Text style={styles.btnText}>Save Changes</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.cancelBtn}
+        onPress={() => setEditingReservation(null)}
+      >
+        <Text style={styles.btnText}>Cancel</Text>
+      </TouchableOpacity>
+    </View>
+  </Modal>
+)}
 
       {/* <TouchableOpacity
         style={styles.createBtn}
@@ -323,6 +331,12 @@ const StatusPage = () => {
 };
 
 const styles = StyleSheet.create({
+  fullPageContainer: {
+    flex: 1,
+    backgroundColor: '#1B263B',
+    padding: 20,
+    justifyContent: 'flex-start',
+  },
   container: { flex: 1, padding: 20, backgroundColor: '#1B263B' },
   title: {
     fontSize: 28,
@@ -358,11 +372,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF',
     borderRadius: 10,
     padding: 15,
-    marginTop: 20,
-    paddingBottom: 60,
+    paddingBottom: '10%',
   },
   fieldLabel: {
-    color: '#1B263B',
+    color: '#FFFFFF',
     fontWeight: 'bold',
     marginBottom: 5,
   },
