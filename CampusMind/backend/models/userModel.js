@@ -39,6 +39,14 @@ const userSchema = new Schema({
         required: true,
         trim: true,
         unique: true
+    },
+    resetToken: { //This is for chaging your password
+        type: String,
+        default: null
+    },
+    resetTokenExpiry: { // Same as line 44
+        type: Date,
+        default: null
     }
 });
 
