@@ -44,40 +44,40 @@ router.post('/createReservation', auth, async (req, res) => {
         // console.log("4. Date parsed successfully:", date);
         // console.log("5. Time received:", time);
 
-       // Parse the time range (e.g., "1:30 PM - 2:30 PM")
-       const timeRegex = /^(\d{1,2}:\d{2}\s?[APMapm]{2})\s*-\s*(\d{1,2}:\d{2}\s?[APMapm]{2})$/;
-       const match = time.match(timeRegex);
+        // Parse the time range (e.g., "1:30 PM - 2:30 PM")
+        const timeRegex = /^(\d{1,2}:\d{2}\s?[APMapm]{2})\s*-\s*(\d{1,2}:\d{2}\s?[APMapm]{2})$/;
+        const match = time.match(timeRegex);
 
-       if (!match) {
-           console.log("Error: Invalid time format. Expected format is 'HH:MM AM/PM - HH:MM AM/PM'.");
-           return res.status(400).json({ error: "Invalid time format. Expected format is 'HH:MM AM/PM - HH:MM AM/PM'." });
-       }
+        if (!match) {
+            console.log("Error: Invalid time format. Expected format is 'HH:MM AM/PM - HH:MM AM/PM'.");
+            return res.status(400).json({ error: "Invalid time format. Expected format is 'HH:MM AM/PM - HH:MM AM/PM'." });
+        }
 
-       const [_, startTime, endTime] = match;
+        const [_, startTime, endTime] = match;
 
-       // Convert start and end times to 24-hour format (HH:MM)
-       const startTime24 = moment(startTime, ["h:mm A"]).format("HH:mm");
-       const endTime24 = moment(endTime, ["h:mm A"]).format("HH:mm");
+        // Convert start and end times to 24-hour format (HH:MM)
+        const startTime24 = moment(startTime, ["h:mm A"]).format("HH:mm");
+        const endTime24 = moment(endTime, ["h:mm A"]).format("HH:mm");
 
-       console.log("Start time (24-hour format):", startTime24);
-       console.log("End time (24-hour format):", endTime24);
+        console.log("Start time (24-hour format):", startTime24);
+        console.log("End time (24-hour format):", endTime24);
 
-       // Define the Central Time (CT) time zone
-       const centralTimeZone = 'America/Chicago';
+        // Define the Central Time (CT) time zone
+        const centralTimeZone = 'America/Chicago';
 
-       // Convert today's date to Central Time
-       const today = moment.tz(new Date(), centralTimeZone).startOf('day');
-       console.log("Today's date (CT):", today.format());
+        // Convert today's date to Central Time
+        const today = moment.tz(new Date(), centralTimeZone).startOf('day');
+        console.log("Today's date (CT):", today.format());
 
-       // Combine reservation date and start time into a single datetime
-       const reservationDateTime = moment.tz(`${date} ${startTime24}`, 'YYYY-MM-DD HH:mm', centralTimeZone);
-       console.log("Reservation date and time (CT):", reservationDateTime.format());
+        // Combine reservation date and start time into a single datetime
+        const reservationDateTime = moment.tz(`${date} ${startTime24}`, 'YYYY-MM-DD HH:mm', centralTimeZone);
+        console.log("Reservation date and time (CT):", reservationDateTime.format());
 
-       // Compare reservation date with today's date
-       if (reservationDateTime.isBefore(today)) {
-           console.log("Error: Reservation date must be in the future.");
-           return res.status(400).json({ error: "Reservation date must be in the future." });
-       }
+        // Compare reservation date with today's date
+        if (reservationDateTime.isBefore(today)) {
+            console.log("Error: Reservation date must be in the future.");
+            return res.status(400).json({ error: "Reservation date must be in the future." });
+        }
         
        // console.log("6. Is revervation date after today:", reservationDateTime.isAfter(today));
         
