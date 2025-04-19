@@ -16,8 +16,10 @@ import { Calendar } from 'react-native-calendars';
 import { Picker } from '@react-native-picker/picker';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { COURTS } from './BookingPage'; // your courts array
+import { useFocusEffect } from '@react-navigation/native';
+import moment from 'moment';
 
-const API_URL = 'http://192.168.1.167:3000/reservations';
+const API_URL = 'http://10.80.72.125:3000/reservations';
 
 const StatusPage = () => {
   const [reservations, setReservations] = useState([]);
@@ -26,7 +28,8 @@ const StatusPage = () => {
 
   const [sportName, setSportName] = useState('');
   const [date, setDate] = useState('');           // 'YYYY-MM-DD'
-  const [time, setTime] = useState('');           // 'HH:MM'
+  const [startTime, setStartTime] = useState(''); // Start time
+  const [endTime, setEndTime] = useState(''); // End time
 
   const [isCalendarVisible, setCalendarVisible] = useState(false);
   const [isTimePickerVisible, setTimePickerVisible] = useState(false);
@@ -34,33 +37,47 @@ const StatusPage = () => {
   const router = useRouter();
 
   // Fetch reservations
-  useEffect(() => {
-    (async () => {
-      try {
-        const token = await AsyncStorage.getItem('token');
-        if (!token) throw new Error('Not Authenticated');
-        const resp = await fetch(`${API_URL}/getUserReservation`, {
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        const data = await resp.json();
-        if (!resp.ok) throw new Error(data.error || 'Fetch failed');
-        setReservations(data);
-      } catch (err) {
-        Alert.alert('Error', err.message);
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, []);
+  const fetchReservations = async () => {
+    try {
+      setLoading(true);
+      const token = await AsyncStorage.getItem('token');
+      if (!token) throw new Error('Not Authenticated');
+      const resp = await fetch(`${API_URL}/getUserReservation`, {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || 'Fetch failed');
+      setReservations(data);
+    } catch (err) {
+      Alert.alert('Error', err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Use useFocusEffect to fetch reservations when the screen is focused
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchReservations();
+    }, [])
+  );
 
   // Modify
   const handleModifyReservation = async () => {
     try {
       const token = await AsyncStorage.getItem('token');
       if (!token) throw new Error('Please log in');
+
+      if (!startTime || !endTime) {
+        Alert.alert('Error', 'Please select both start and end times.');
+        return;
+      }
+
+      const formattedTime = `${startTime} - ${endTime}`;
+
       const resp = await fetch(
         `${API_URL}/modifyReservation/${editingReservation._id}`,
         {
@@ -69,7 +86,7 @@ const StatusPage = () => {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ sportName, date, time }),
+          body: JSON.stringify({ sportName, date, time: formattedTime }),
         }
       );
       if (!resp.ok) {
@@ -80,7 +97,7 @@ const StatusPage = () => {
       setReservations((prev) =>
         prev.map((r) =>
           r._id === editingReservation._id
-            ? { ...r, sportName, date, time }
+            ? { ...r, sportName, date, time: formattedTime }
             : r
         )
       );
@@ -119,14 +136,23 @@ const StatusPage = () => {
   const closeCalendar = () => setCalendarVisible(false);
 
   // Time picker controls
-  const openTimePicker = () => setTimePickerVisible(true);
-  const closeTimePicker = () => setTimePickerVisible(false);
+  const openStartTimePicker = () => setTimePickerVisible('start');
+  const openEndTimePicker = () => setTimePickerVisible('end');
+
+  const closeTimePicker = () => {
+    setTimePickerVisible(false); // Close the time picker modal
+  };
+
   const handleTimeConfirm = (dt) => {
-    const h = dt.getHours().toString().padStart(2, '0');
-    const m = dt.getMinutes().toString().padStart(2, '0');
-    setTime(`${h}:${m}`);
+    const formattedTime = moment(dt).format('h:mm A');
+    if (isTimePickerVisible === 'start') {
+      setStartTime(formattedTime);
+    } else if (isTimePickerVisible === 'end') {
+      setEndTime(formattedTime);
+    }
     closeTimePicker();
   };
+
 
   return (
     <View style={styles.container}>
@@ -158,7 +184,10 @@ const StatusPage = () => {
                     setEditingReservation(item);
                     setSportName(item.sportName);
                     setDate(item.date);
-                    setTime(item.time);
+                    
+                    const [start, end] = item.time.split(' - ');
+                    setStartTime(start.trim());
+                    setEndTime(end.trim());
                   }}
                 >
                   <Text style={styles.btnText}>Modify</Text>
@@ -244,18 +273,24 @@ const StatusPage = () => {
 
           {/* Time */}
           <Text style={styles.fieldLabel}>Time</Text>
-          <TouchableOpacity
-            style={styles.pickerContainer}
-            onPress={openTimePicker}
-          >
-            <Text style={{ padding: 10 }}>
-              {time || 'Select Time'}
-            </Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+            <TouchableOpacity
+              style={[styles.pickerContainer, { flex: 1, marginRight: 5}]}
+              onPress={openStartTimePicker}
+            >
+              <Text style={{ padding: 10 }}>{startTime || 'Start Time'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.pickerContainer, { flex: 1, marginRight: 5}]}
+              onPress={openEndTimePicker}
+            >
+              <Text style={{ padding: 10 }}>{endTime || 'End Time'}</Text>
+            </TouchableOpacity>
+          </View>
 
           {/* Time Picker Modal */}
           <DateTimePickerModal
-            isVisible={isTimePickerVisible}
+            isVisible={isTimePickerVisible !== false}
             mode="time"
             date={new Date()}
             onConfirm={handleTimeConfirm}
@@ -290,9 +325,10 @@ const StatusPage = () => {
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, backgroundColor: '#1B263B' },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     color: '#FFF',
     fontWeight: 'bold',
+    paddingTop: '10%',
     marginBottom: 20,
     textAlign: 'center',
   },
@@ -308,12 +344,12 @@ const styles = StyleSheet.create({
   label: { fontWeight: 'bold' },
   actions: { flexDirection: 'row', justifyContent: 'space-between' },
   modifyBtn: {
-    backgroundColor: '#1976D2',
+    backgroundColor: '#778FFF',
     padding: 10,
     borderRadius: 8,
   },
   cancelBtn: {
-    backgroundColor: '#E63946',
+    backgroundColor: '#F44336',
     padding: 10,
     borderRadius: 8,
   },

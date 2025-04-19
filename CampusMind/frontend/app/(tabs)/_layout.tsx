@@ -28,8 +28,11 @@ export default function TabLayout() {
           shadowOpacity: 0.2,
           shadowRadius: 4,
           elevation: 5, // Elevation for Android
+          justifyContent: 'space-evenly',
         },
-        tabBarItemStyle: { flex: 1 },
+        tabBarItemStyle: { 
+          flex: 1 
+        },
         tabBarLabelStyle: {
           fontSize: 12, // Smaller font for labels
           fontWeight: 'bold',
@@ -41,7 +44,8 @@ export default function TabLayout() {
           route.name === 'explore' ||
           route.name === 'BookingPage' ||
           route.name === 'Status' ||
-          route.name === 'ProfilePage'
+          route.name === 'ProfilePage' ||
+          route.name === 'CourtAvailability'
             ? HapticTab
             : () => null,
       })}
@@ -68,21 +72,18 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="CourtAvailability"
+        options={{
+          title: 'Court',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="basketball" color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="ProfilePage"
         options={{
           title: 'Profile',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="person" color={color} />,
         }}
-      />
-
-      {/* Hidden tabs */}
-      <Tabs.Screen
-        name="index"
-        options={{ title: 'Login', tabBarStyle: { display: 'none' } }}
-      />
-      <Tabs.Screen
-        name="SignUpPage"
-        options={{ title: 'Sign Up', tabBarStyle: { display: 'none' } }}
       />
     </Tabs>
   );
