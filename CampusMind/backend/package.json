@@ -5,8 +5,10 @@
     "main": "app.js",
     "type": "module",
     "scripts": {
-        "test": "echo \"Error: no test specified\" && exit 1",
-        "start": "env-cmd -f ./Back-end/.env nodemon ./Back-end/app.js"
+        "test": "node testing/test.js",
+        "start": "node app.js",
+        "dev": "nodemon app.js",
+        "populate-courts": "node scripts/populateCourts.js"
     },
     "author": "Luan Le",
     "license": "ISC",

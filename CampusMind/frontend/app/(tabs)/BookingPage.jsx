@@ -1,13 +1,14 @@
 // BookingPage.jsx
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, FlatList, Image, useWindowDimensions, Modal, ScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, FlatList, Image, useWindowDimensions, Modal, ScrollView, ActivityIndicator } from 'react-native';
 import { Link } from 'expo-router';
 import { COLORS } from '../components/theme';
 import { Calendar } from 'react-native-calendars';
 import { useRouter } from 'expo-router';
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Ionicons } from '@expo/vector-icons';
 
-const COURTS = [
+const SPORTS = [
   { name: 'Badminton', icon: 'https://img.icons8.com/color/48/000000/badminton.png' },
   { name: 'Basketball', icon: 'https://img.icons8.com/color/48/000000/basketball.png' },
   { name: 'Table Tennis', icon: 'https://img.icons8.com/color/48/000000/table-tennis.png' },
@@ -16,8 +17,16 @@ const COURTS = [
 
 // Generate 30-Minute Time Slots based on day of the week
 const generateTimeSlots = (dateString) => {
+  console.log('Generating time slots for date:', dateString);
+  
+  if (!dateString) {
+    console.log('No date string provided, returning empty array');
+    return [];
+  }
+  
   const date = new Date(dateString);
   const dayOfWeek = date.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+  console.log('Day of week:', dayOfWeek);
 
   let start, end;
 
@@ -31,22 +40,40 @@ const generateTimeSlots = (dateString) => {
     start = '12:00'; // 12 PM
     end = '20:00';   // 8 PM
   }
+  
+  console.log('Time range:', start, 'to', end);
 
   const slots = [];
   let [hour, minute] = start.split(':').map(Number);
   const [endHour, endMinute] = end.split(':').map(Number);
 
-  while (hour < endHour || (hour === endHour && minute < endMinute)) {
-    const time = `${hour}:${String(minute).padStart(2, '0')}`; // Use hour directly
-    slots.push(time);
+  // Convert end time to minutes for easier comparison
+  const endTimeInMinutes = endHour * 60 + endMinute;
+  
+  // Generate 30-minute slots
+  while (hour * 60 + minute < endTimeInMinutes) {
+    const currentTime = `${hour}:${String(minute).padStart(2, '0')}`;
+    const formattedSlot = formatTimeToAMPM(currentTime);
+    slots.push(formattedSlot);
+    
+    // Move to the next 30-minute slot
     minute += 30;
     if (minute === 60) {
       minute = 0;
       hour++;
     }
   }
-
+  
+  console.log('Generated slots:', slots);
   return slots;
+};
+
+// Format time from 24-hour to 12-hour with AM/PM
+const formatTimeToAMPM = (time) => {
+  const [hour, minute] = time.split(':').map(Number);
+  const period = hour >= 12 ? 'PM' : 'AM';
+  const formattedHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
+  return `${formattedHour}:${String(minute).padStart(2, '0')} ${period}`;
 };
 
 // Format Time Slots (30-min blocks & consecutive grouping)
@@ -88,291 +115,519 @@ const formatTime = (totalMinutes) => {
 
 const BookingPage = () => {
   const { width } = useWindowDimensions();
-  const [selectedCourt, setSelectedCourt] = useState('');
-  const [formattedDate, setFormattedDate] = useState('');
-  const [tempSelectedDate, setTempSelectedDate] = useState('');
+  const router = useRouter();
+  
+  // State management
+  const [currentStep, setCurrentStep] = useState(1);
+  const [selectedSport, setSelectedSport] = useState(null);
+  const [availableCourts, setAvailableCourts] = useState([]);
+  const [selectedCourt, setSelectedCourt] = useState(null);
+  const [selectedDate, setSelectedDate] = useState(null);
   const [selectedTimeSlots, setSelectedTimeSlots] = useState([]);
-  const [tempSelectedTimeSlots, setTempSelectedTimeSlots] = useState([]); // ✅ Temporary State for Time Picker
-  const [isCalendarVisible, setCalendarVisible] = useState(false);
-  const [isTimePickerVisible, setTimePickerVisible] = useState(false);
-  const [bookingDetails, setBookingDetails] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [timeSelectionError, setTimeSelectionError] = useState('');
 
-  // ✅ Booking Confirmation
-const API_URL = 'http://10.80.72.125:3000/reservations/createReservation'; // 🛠️ 실제 IP로 변경해야 함!
-const router = useRouter();
+  // Fetch available courts when sport is selected
+  useEffect(() => {
+    if (selectedSport) {
+      fetchAvailableCourts(selectedSport.name);
+    }
+  }, [selectedSport]);
 
-const handleBooking = async () => {
-  if (!selectedCourt || !formattedDate || selectedTimeSlots.length === 0) {
-    Alert.alert('Error', 'Please fill in all the fields');
-    return;
-  }
+  const fetchAvailableCourts = async (sportName) => {
+    setLoading(true);
+    try {
+      console.log('Fetching courts for sport:', sportName);
+      console.log('API URL:', process.env.EXPO_PUBLIC_API_URL);
+      
+      const token = await AsyncStorage.getItem("token");
+      if (!token) {
+        Alert.alert("Error", "Please log in to book a court");
+        router.push('/login');
+        return;
+      }
+      console.log('Token found:', token.substring(0, 10) + '...');
 
-  const formattedTimes = formatTimeSlots(selectedTimeSlots);
-
-  const reservationData = {
-    sportName: selectedCourt,
-    date: formattedDate,
-    time: formattedTimes,
+      const url = `${process.env.EXPO_PUBLIC_API_URL}/reservations/getAvailableCourts/${sportName}`;
+      console.log('Request URL:', url);
+      
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      
+      console.log('Response status:', response.status);
+      
+      const data = await response.json();
+      console.log('Response data:', data);
+      
+      if (response.ok) {
+        setAvailableCourts(data);
+      } else {
+        Alert.alert('Error', data.error || 'Failed to fetch courts');
+      }
+    } catch (error) {
+      console.error('Error fetching courts:', error);
+      Alert.alert('Error', `Failed to fetch courts: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  try {
-    const token = await AsyncStorage.getItem("token");
+  const handleSportSelect = (sport) => {
+    setSelectedSport(sport);
+    setCurrentStep(2);
+  };
 
-    if (!token) {
-      Alert.alert("Error", "No token found!");
+  const handleCourtSelect = (court) => {
+    setSelectedCourt(court);
+    setCurrentStep(3);
+  };
+
+  const handleDateSelect = (date) => {
+    console.log('Date selected:', date);
+    if (date && date.dateString) {
+      setSelectedDate(date.dateString);
+      setShowDatePicker(false);
+      setCurrentStep(4); // Move directly to time selection step
+    } else {
+      console.error('Invalid date object:', date);
+      Alert.alert('Error', 'Invalid date selected');
+    }
+  };
+
+  const handleTimeSelect = (time) => {
+    console.log('Time selected:', time);
+    
+    // Check if time is already selected
+    const isAlreadySelected = selectedTimeSlots.includes(time);
+    
+    if (isAlreadySelected) {
+      // Remove the time if it's already selected
+      setSelectedTimeSlots(selectedTimeSlots.filter(t => t !== time));
+      setTimeSelectionError('');
+    } else {
+      // Add the time if it's not already selected
+      const newSelectedSlots = [...selectedTimeSlots, time].sort();
+      
+      // Check if the selection exceeds 3 hours
+      if (newSelectedSlots.length > 6) { // 6 slots = 3 hours (30 min each)
+        setTimeSelectionError('You can only select up to 3 hours of time slots');
+        return;
+      }
+      
+      // Check if the selection is continuous
+      const isContinuous = checkContinuousSlots(newSelectedSlots);
+      if (!isContinuous) {
+        setTimeSelectionError('Please select continuous time slots');
+        return;
+      }
+      
+      setSelectedTimeSlots(newSelectedSlots);
+      setTimeSelectionError('');
+    }
+  };
+
+  const checkContinuousSlots = (slots) => {
+    if (slots.length <= 1) return true;
+    
+    // Convert all times to minutes for easier comparison
+    const timeInMinutes = slots.map(time => {
+      const [timeStr, period] = time.split(' ');
+      let [hours, minutes] = timeStr.split(':').map(Number);
+      if (period === 'PM' && hours !== 12) hours += 12;
+      if (period === 'AM' && hours === 12) hours = 0;
+      return hours * 60 + minutes;
+    });
+    
+    // Sort the times
+    timeInMinutes.sort((a, b) => a - b);
+    
+    // Check if each slot is 30 minutes after the previous one
+    for (let i = 1; i < timeInMinutes.length; i++) {
+      if (timeInMinutes[i] - timeInMinutes[i-1] !== 30) {
+        return false;
+      }
+    }
+    
+    return true;
+  };
+
+  const formatSelectedTimeRange = () => {
+    if (selectedTimeSlots.length === 0) return '';
+    
+    const startTime = selectedTimeSlots[0];
+    const lastSelectedTime = selectedTimeSlots[selectedTimeSlots.length - 1];
+    
+    // Calculate the end time by adding 30 minutes to the last selected time
+    const [timeStr, period] = lastSelectedTime.split(' ');
+    let [hours, minutes] = timeStr.split(':').map(Number);
+    if (period === 'PM' && hours !== 12) hours += 12;
+    if (period === 'AM' && hours === 12) hours = 0;
+    
+    // Add 30 minutes
+    minutes += 30;
+    if (minutes >= 60) {
+      minutes = minutes % 60;
+      hours += 1;
+    }
+    if (hours >= 24) {
+      hours = hours % 24;
+    }
+    
+    // Convert back to 12-hour format
+    const endPeriod = hours >= 12 ? 'PM' : 'AM';
+    const endHours = hours > 12 ? hours - 12 : hours === 0 ? 12 : hours;
+    const endTime = `${endHours}:${String(minutes).padStart(2, '0')} ${endPeriod}`;
+    
+    // Calculate the duration in hours
+    const durationHours = selectedTimeSlots.length * 0.5;
+    
+    return `${startTime} - ${endTime} (${durationHours} hours)`;
+  };
+
+  const handleBooking = async () => {
+    if (!selectedSport || !selectedCourt || !selectedDate || selectedTimeSlots.length === 0) {
+      Alert.alert('Error', 'Please complete all booking details');
       return;
     }
 
-    console.log('Sending reservation data:', reservationData);
+    setLoading(true);
+    try {
+      const token = await AsyncStorage.getItem("token");
+      if (!token) {
+        Alert.alert("Error", "Please log in to book a court");
+        router.push('/login');
+        return;
+      }
 
-    const response = await fetch(API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
-      body: JSON.stringify(reservationData),
-    });
+      // Get the start and end times from the selected time slots
+      const startTime = selectedTimeSlots[0];
+      const endTime = selectedTimeSlots[selectedTimeSlots.length - 1];
+      const timeRange = `${startTime} - ${endTime}`;
+      
+      // Calculate duration in hours
+      const durationHours = selectedTimeSlots.length * 0.5;
 
-    const responseData = await response.json();
-    console.log('Response status:', response.status);
-    console.log('Response data:', responseData);
+      console.log('Booking details:', {
+        sportName: selectedSport.name,
+        courtName: selectedCourt.court_name,
+        date: selectedDate,
+        startTime,
+        endTime,
+        duration: `${durationHours} hours`
+      });
 
-    if (response.ok || response.status === 201) {
-      // Show success notification
-      Alert.alert(
-        'Booking Confirmed',
-        `Your booking for ${selectedCourt} on ${formattedDate} at ${formattedTimes} has been successfully confirmed!`,
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              // Navigate back to the homepage
-              router.push('/explore');
+      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/reservations/createReservation`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          sportName: selectedSport.name,
+          courtName: selectedCourt.court_name,
+          date: selectedDate,
+          time: timeRange,
+        }),
+      });
 
-              // Clear booking details
-              setSelectedCourt('');
-              setFormattedDate('');
-              setSelectedTimeSlots([]);
-              setTempSelectedDate('');
-              setTempSelectedTimeSlots([]);
-            },
-          },
-        ]
-      );
-    } else {
-      Alert.alert('Booking Failed', responseData.message || 'Something went wrong. Please try again.');
+      const data = await response.json();
+      if (response.ok) {
+        Alert.alert('Success', 'Court booked successfully!', [
+          { 
+            text: 'OK', 
+            onPress: () => router.push('/Status') 
+          }
+        ]);
+      } else {
+        Alert.alert('Error', data.error || 'Failed to book court');
+      }
+    } catch (error) {
+      console.error('Error booking court:', error);
+      Alert.alert('Error', 'Failed to book court');
+    } finally {
+      setLoading(false);
     }
-  } catch (error) {
-    console.error('Booking Error:', error);
-    Alert.alert('Error', 'Could not connect to the server. Please check your internet connection.');
-  }
-};
+  };
 
-  
-
-  // ✅ Court Selection
-  const renderCourtItem = ({ item }) => (
-    <TouchableOpacity
-      style={[
-        styles.courtItem,
-        { width: width * 0.28 },
-        selectedCourt === item.name && styles.selectedCourt
-      ]}
-      onPress={() => setSelectedCourt(item.name)}
-    >
-      <Image source={{ uri: item.icon }} style={styles.icon} />
-      <Text style={styles.courtText}>{item.name}</Text>
-    </TouchableOpacity>
+  const renderStepIndicator = () => (
+    <View style={styles.stepIndicator}>
+      {[1, 2, 3, 4].map((step) => (
+        <View key={step} style={styles.stepContainer}>
+          <View style={[styles.step, currentStep >= step && styles.activeStep]}>
+            <Text style={[styles.stepText, currentStep >= step && styles.activeStepText]}>
+              {step}
+            </Text>
+          </View>
+          {step < 4 && (
+            <View style={[styles.stepLine, currentStep > step && styles.activeStepLine]} />
+          )}
+        </View>
+      ))}
+    </View>
   );
 
-  // ✅ Calendar Modal Functions
-  const showCalendar = () => {
-    if (!selectedCourt) {
-      Alert.alert('Attention', 'Please select a sport first');
-      return;
-    }
-    setCalendarVisible(true);
+  const renderSportSelection = () => (
+    <View style={styles.stepContent}>
+      <Text style={styles.stepTitle}>Select a Sport</Text>
+      <Text style={styles.stepSubtitle}>Choose the sport you want to play</Text>
+      
+      <View style={styles.sportGrid}>
+        {SPORTS.map((sport) => (
+          <TouchableOpacity
+            key={sport.name}
+            style={[
+              styles.sportCard, 
+              selectedSport?.name === sport.name && styles.selectedCard
+            ]}
+            onPress={() => handleSportSelect(sport)}
+          >
+            <View style={styles.sportIconContainer}>
+              <Image source={{ uri: sport.icon }} style={styles.sportIcon} />
+            </View>
+            <Text style={[
+              styles.sportName,
+              selectedSport?.name === sport.name && styles.selectedSportName
+            ]}>
+              {sport.name}
+            </Text>
+            {selectedSport?.name === sport.name && (
+              <View style={styles.selectedIndicator}>
+                <Ionicons name="checkmark-circle" size={24} color="#fff" />
+              </View>
+            )}
+          </TouchableOpacity>
+        ))}
+      </View>
+      
+      <View style={styles.navigationButtons}>
+        <TouchableOpacity
+          style={[styles.navButton, styles.cancelButton]}
+          onPress={() => router.back()}
+        >
+          <Text style={styles.navButtonText}>Cancel</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.navButton, styles.nextButton, !selectedSport && styles.disabledButton]}
+          onPress={() => setCurrentStep(2)}
+          disabled={!selectedSport}
+        >
+          <Text style={styles.navButtonText}>Next</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
+  const renderCourtSelection = () => (
+    <View style={styles.stepContent}>
+      <Text style={styles.stepTitle}>Select a Court</Text>
+      {loading ? (
+        <ActivityIndicator size="large" color={COLORS.primary} />
+      ) : (
+        <FlatList
+          data={availableCourts}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={[styles.courtCard, selectedCourt?._id === item._id && styles.selectedCard]}
+              onPress={() => handleCourtSelect(item)}
+            >
+              <View style={styles.courtInfo}>
+                <Text style={styles.courtName}>{item.court_name}</Text>
+                <Text style={styles.courtStatus}>
+                  {item.is_available ? 'Available' : 'Unavailable'}
+                </Text>
+              </View>
+              {item.is_shared && (
+                <View style={styles.sharedBadge}>
+                  <Text style={styles.sharedText}>Shared</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          )}
+          keyExtractor={(item) => item._id}
+        />
+      )}
+      <View style={styles.navigationButtons}>
+        <TouchableOpacity
+          style={[styles.navButton, styles.backButton]}
+          onPress={() => setCurrentStep(1)}
+        >
+          <Text style={styles.navButtonText}>Back</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.navButton, styles.nextButton, !selectedCourt && styles.disabledButton]}
+          onPress={() => setCurrentStep(3)}
+          disabled={!selectedCourt}
+        >
+          <Text style={styles.navButtonText}>Next</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
+  const renderDateSelection = () => (
+    <View style={styles.stepContent}>
+      <Text style={styles.stepTitle}>Select Date</Text>
+      <Calendar
+        onDayPress={handleDateSelect}
+        minDate={new Date().toISOString().split('T')[0]}
+        markedDates={{
+          [selectedDate]: { selected: true, selectedColor: COLORS.primary }
+        }}
+        theme={{
+          selectedDayBackgroundColor: COLORS.primary,
+          todayTextColor: COLORS.primary,
+          arrowColor: COLORS.primary,
+        }}
+      />
+      <View style={styles.navigationButtons}>
+        <TouchableOpacity
+          style={[styles.navButton, styles.backButton]}
+          onPress={() => setCurrentStep(2)}
+        >
+          <Text style={styles.navButtonText}>Back</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
+  const renderTimeSelection = () => {
+    console.log('Rendering time selection for date:', selectedDate);
+    const timeSlots = generateTimeSlots(selectedDate);
+    console.log('Generated time slots:', timeSlots);
+    
+    return (
+      <View style={styles.stepContent}>
+        <Text style={styles.stepTitle}>Select Time</Text>
+        <Text style={styles.timeSelectionInfo}>
+          Select up to 3 hours of continuous time slots (30-minute increments)
+        </Text>
+        {timeSelectionError ? (
+          <Text style={styles.errorText}>{timeSelectionError}</Text>
+        ) : null}
+        <ScrollView>
+          {timeSlots.length > 0 ? (
+            timeSlots.map((timeSlot) => (
+              <TouchableOpacity
+                key={timeSlot}
+                style={[
+                  styles.timeSlot, 
+                  selectedTimeSlots.includes(timeSlot) && styles.selectedTimeSlot
+                ]}
+                onPress={() => handleTimeSelect(timeSlot)}
+              >
+                <Text style={[
+                  styles.timeText, 
+                  selectedTimeSlots.includes(timeSlot) && styles.selectedTimeText
+                ]}>
+                  {timeSlot}
+                </Text>
+              </TouchableOpacity>
+            ))
+          ) : (
+            <Text style={styles.noTimeSlotsText}>No time slots available for this date</Text>
+          )}
+        </ScrollView>
+        {selectedTimeSlots.length > 0 && (
+          <View style={styles.selectedTimeRangeContainer}>
+            <Text style={styles.selectedTimeRangeLabel}>Selected Time Range:</Text>
+            <Text style={styles.selectedTimeRangeText}>{formatSelectedTimeRange()}</Text>
+          </View>
+        )}
+        <View style={styles.navigationButtons}>
+          <TouchableOpacity
+            style={[styles.navButton, styles.backButton]}
+            onPress={() => setCurrentStep(3)}
+          >
+            <Text style={styles.navButtonText}>Back</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.navButton, styles.nextButton, selectedTimeSlots.length === 0 && styles.disabledButton]}
+            onPress={() => setCurrentStep(5)}
+            disabled={selectedTimeSlots.length === 0}
+          >
+            <Text style={styles.navButtonText}>Review Booking</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
   };
-  
-  const hideCalendar = () => setCalendarVisible(false);
 
-  const handleDateSelect = (day) => {
-    const date = new Date(day.dateString);
-    const options = { weekday: 'short' }; // Get short weekday name (e.g., "Wed")
-    const dayOfWeek = date.toLocaleDateString('en-US', options);
-    const selectedDate = `${day.dateString} (${dayOfWeek})`;
-
-    setTempSelectedDate(day.dateString); // Store the selected date in 'YYYY-MM-DD' format
-  };
-
-  const confirmDate = () => {
-    setFormattedDate(tempSelectedDate);
-    hideCalendar();
-  };
-
-  const cancelDateSelection = () => {
-    setTempSelectedDate('');
-    hideCalendar();
-  };
-
-  // ✅ Time Picker Modal Functions
-  const showTimePicker = () => {
-    if (!selectedCourt) {
-      Alert.alert('Attention', 'Please select a sport first');
-      return;
-    }
-    if (!formattedDate) {
-      Alert.alert('Attention', 'Please select a date first');
-      return;
-    }
-    const slots = generateTimeSlots(formattedDate.split(' ')[0]); // Pass only the date part
-    setTempSelectedTimeSlots([...selectedTimeSlots]);
-    setTimePickerVisible(true);
-  };
-  
-  const hideTimePicker = () => setTimePickerVisible(false);
-
-  const toggleTimeSlot = (time) => {
-    let updatedSlots = [...tempSelectedTimeSlots];
-
-    if (updatedSlots.includes(time)) {
-      updatedSlots = updatedSlots.filter((t) => t !== time);
-    } else if (updatedSlots.length < 6) {
-      updatedSlots.push(time);
-    } else {
-      Alert.alert('Limit Reached', 'You can select up to 3 hours (6 slots).');
-    }
-
-    setTempSelectedTimeSlots(updatedSlots.sort());
-  };
-
-  // ✅ Confirm or Cancel Time Selection
-  const confirmTimeSelection = () => {
-    setSelectedTimeSlots([...tempSelectedTimeSlots]); // ✅ Apply temp selection
-    hideTimePicker();
-  };
-
-  const cancelTimeSelection = () => {
-    setTempSelectedTimeSlots([]); // ✅ Revert to previous selection
-    hideTimePicker();
-  };
+  const renderBookingSummary = () => (
+    <View style={styles.stepContent}>
+      <Text style={styles.stepTitle}>Booking Summary</Text>
+      <View style={styles.summaryCard}>
+        <View style={styles.summaryRow}>
+          <Text style={styles.summaryLabel}>Sport:</Text>
+          <Text style={styles.summaryValue}>{selectedSport.name}</Text>
+        </View>
+        <View style={styles.summaryRow}>
+          <Text style={styles.summaryLabel}>Court:</Text>
+          <Text style={styles.summaryValue}>{selectedCourt.court_name}</Text>
+        </View>
+        <View style={styles.summaryRow}>
+          <Text style={styles.summaryLabel}>Date:</Text>
+          <Text style={styles.summaryValue}>{selectedDate}</Text>
+        </View>
+        <View style={styles.summaryRow}>
+          <Text style={styles.summaryLabel}>Time:</Text>
+          <Text style={styles.summaryValue}>{formatSelectedTimeRange()}</Text>
+        </View>
+      </View>
+      <View style={styles.navigationButtons}>
+        <TouchableOpacity
+          style={[styles.navButton, styles.backButton]}
+          onPress={() => setCurrentStep(4)}
+        >
+          <Text style={styles.navButtonText}>Back</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.navButton, styles.confirmButton]}
+          onPress={handleBooking}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.navButtonText}>Confirm Booking</Text>
+          )}
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
 
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>Booking System</Text>
-
-
-      <Text style={styles.inform}>Please choose a sport (swipe left or right)</Text>
-      {/* ✅ Court Selection */}
-      <View style={styles.courtListWrapper}>
-        <FlatList
-          data={COURTS}
-          renderItem={renderCourtItem}
-          keyExtractor={(item) => item.name}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.courtList}
-        />
-      </View>
-
-      <Text style={styles.inform}>Please choose a date and time to continue</Text>
-
-      {/* ✅ Date & Time Selection */}
-      <View style={styles.formWrapper}>
-        <TouchableOpacity style={styles.dateButton} onPress={showCalendar}>
-          <Text style={{ color: formattedDate ? COLORS.textPrimary : '#ccc' }}>
-            {formattedDate || 'Select Date'}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.dateButton} onPress={showTimePicker}>
-          <Text style={{ color: selectedTimeSlots.length > 0 ? COLORS.textPrimary : '#ccc' }}>
-            {selectedTimeSlots.length > 0 ? formatTimeSlots(selectedTimeSlots) : 'Select Time'}
-          </Text>
-        </TouchableOpacity>
-      </View>
+      <View style={styles.contentContainer}>
+        {renderStepIndicator()}
         
-      {/* ✅ Booking Summary */}
-      <View style={styles.bookingSummary}>
-        <Text style={styles.summaryTitle}>Booking Summary</Text>
-        <Text style={styles.summaryText}>Name: Student Name</Text>
-        <Text style={styles.summaryText}>Email: Student Email</Text>
-        <Text style={styles.summaryText}>Sport: {selectedCourt || 'N/A'}</Text>
-        <Text style={styles.summaryText}>Date: {formattedDate || 'N/A'}</Text>
-        <Text style={styles.summaryText}>
-          Time: {selectedTimeSlots.length > 0 ? formatTimeSlots(selectedTimeSlots) : 'N/A'}
-        </Text>
-      </View>
-
-      <View style={styles.formWrapper}>
-        <TouchableOpacity style={styles.button} onPress={handleBooking}>
-          <Text style={styles.buttonText}>Confirm Booking</Text>
-        </TouchableOpacity>
-
-        <Link href="/explore" style={styles.backLink}>
-          <Text style={styles.backLinkText}>Go back to Home</Text>
-        </Link>
-      </View>
-
-      {/* ✅ Calendar Modal */}
-      <Modal transparent={true} animationType="slide" visible={isCalendarVisible} onRequestClose={hideCalendar}>
-        <View style={styles.modalBackground}>
-          <View style={styles.modalContainer}>
-            <Calendar
-              onDayPress={handleDateSelect}
-              markedDates={{
-                [tempSelectedDate]: { selected: true, marked: true, selectedColor: COLORS.button },
-              }}
-              minDate={new Date().toISOString().split('T')[0]}
-              theme={{
-                selectedDayBackgroundColor: COLORS.button,
-                todayTextColor: COLORS.primary,
-                arrowColor: COLORS.primary,
-              }}
-            />
-
-            <View style={styles.modalButtonContainer}>
-              <TouchableOpacity style={styles.cancelButton} onPress={cancelDateSelection}>
-                <Text style={styles.buttonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.confirmButton} onPress={confirmDate} disabled={!tempSelectedDate}>
-                <Text style={styles.buttonText}>Confirm</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+        <View style={styles.stepsContainer}>
+          {currentStep === 1 && renderSportSelection()}
+          {currentStep === 2 && renderCourtSelection()}
+          {currentStep === 3 && renderDateSelection()}
+          {currentStep === 4 && renderTimeSelection()}
+          {currentStep === 5 && renderBookingSummary()}
         </View>
-      </Modal>
+      </View>
 
-      {/* ✅ Time Picker Modal */}
-      <Modal transparent={true} animationType="slide" visible={isTimePickerVisible} onRequestClose={hideTimePicker}>
-        <View style={styles.modalBackground}>
-          <View style={styles.modalContainer}>
-            <Text style={styles.timePickerHeader}>Select Time Slots (3 Hours Max)</Text>
-            <ScrollView contentContainerStyle={styles.timeSlotGrid}>
-              {generateTimeSlots(formattedDate).map((time) => (
-                <TouchableOpacity
-                  key={time}
-                  style={[
-                    styles.timeSlot,
-                    tempSelectedTimeSlots.includes(time) && styles.selectedTimeSlot,
-                  ]}
-                  onPress={() => toggleTimeSlot(time)}
-                >
-                  <Text style={styles.timeSlotText}>{time}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-
-            <View style={styles.modalButtonContainer}>
-              <TouchableOpacity style={styles.cancelButton} onPress={cancelTimeSelection}>
-                <Text style={styles.buttonText}>Cancel</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity style={styles.confirmButton} onPress={confirmTimeSelection}>
-                <Text style={styles.buttonText}>Confirm</Text>
-              </TouchableOpacity>
-            </View>
+      <Modal
+        visible={showDatePicker}
+        animationType="slide"
+        transparent={true}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            {renderDateSelection()}
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => setShowDatePicker(false)}
+            >
+              <Text style={styles.closeButtonText}>Close</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -383,161 +638,325 @@ const handleBooking = async () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'flex-start',
+    backgroundColor: '#fff',
+  },
+  contentContainer: {
+    flex: 1,
+    paddingBottom: 80, // Add padding to prevent overlap with tabs
+  },
+  stepsContainer: {
+    flex: 1,
+  },
+  stepIndicator: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
-    backgroundColor: COLORS.background,
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    backgroundColor: '#f8f9fa',
   },
-  header: {
-    paddingTop: '10%',
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: '5%',
-    color: COLORS.textPrimary,
+  stepContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
   },
-  inform: {
-    marginBottom: 10,
-    color: COLORS.textPrimary,
-    textAlign: 'left',
-    alignSelf: 'flex-start', // 👈 Ensures the text starts at the container's left
-  },
-  courtListWrapper: {
-    height: 100,
-    marginBottom: 15,
-  },
-  courtList: {
+  step: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#e9ecef',
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  courtItem: {
-    height: 90,
+  activeStep: {
     backgroundColor: COLORS.primary,
-    paddingVertical: 10,
-    borderRadius: 8,
+  },
+  stepText: {
+    color: '#6c757d',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  activeStepText: {
+    color: '#fff',
+  },
+  stepLine: {
+    flex: 1,
+    height: 2,
+    backgroundColor: '#e9ecef',
     marginHorizontal: 5,
+  },
+  activeStepLine: {
+    backgroundColor: COLORS.primary,
+  },
+  stepContent: {
+    flex: 1,
+    padding: 20,
+  },
+  stepTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 20,
+    color: '#212529',
+  },
+  stepSubtitle: {
+    fontSize: 16,
+    color: '#6c757d',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  sportGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    paddingHorizontal: 10,
+  },
+  sportCard: {
+    width: '48%',
+    aspectRatio: 1,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 15,
+    marginBottom: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    position: 'relative',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  selectedCard: {
+    borderColor: COLORS.primary,
+    backgroundColor: '#f8f9fa',
+  },
+  sportIconContainer: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: '#f8f9fa',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  sportIcon: {
+    width: 50,
+    height: 50,
+  },
+  sportName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#212529',
+    textAlign: 'center',
+  },
+  selectedSportName: {
+    color: COLORS.primary,
+  },
+  selectedIndicator: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    backgroundColor: COLORS.primary,
+    borderRadius: 12,
+    width: 24,
+    height: 24,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  selectedCourt: {
-    backgroundColor: COLORS.button,
-  },
-  courtText: {
-    color: COLORS.textPrimary,
-    fontSize: 14,
-    fontWeight: '600',
-    marginTop: 5,
-  },
-  icon: {
-    width: '40%',
-    height: '50%',
-  },
-  formWrapper: {
-    width: '100%',
-  },
-  dateButton: {
-    width: '100%',
-    padding: 10,
+  courtCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 15,
     marginBottom: 10,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 5,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  courtInfo: {
+    flex: 1,
+  },
+  courtName: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#212529',
+    marginBottom: 5,
+  },
+  courtStatus: {
+    fontSize: 14,
+    color: '#6c757d',
+  },
+  sharedBadge: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 15,
+  },
+  sharedText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  timeSlot: {
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+    padding: 15,
+    marginBottom: 10,
+    alignItems: 'center',
+  },
+  selectedTimeSlot: {
     backgroundColor: COLORS.primary,
   },
-  button: {
-    backgroundColor: COLORS.button,
-    paddingVertical: 12,
-    paddingHorizontal: 30,
-    borderRadius: 8,
-    alignSelf: 'center',
+  timeText: {
+    fontSize: 16,
+    color: '#212529',
   },
-  buttonText: {
+  selectedTimeText: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  summaryCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 20,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  summaryLabel: {
+    fontSize: 16,
+    color: '#6c757d',
+  },
+  summaryValue: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#212529',
+  },
+  navigationButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 20,
+    paddingHorizontal: 10,
+    paddingBottom: 20,
+  },
+  navButton: {
+    flex: 1,
+    padding: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 5,
+    minHeight: 50,
+  },
+  backButton: {
+    backgroundColor: '#6c757d',
+  },
+  nextButton: {
+    backgroundColor: COLORS.primary,
+  },
+  confirmButton: {
+    backgroundColor: '#28a745',
+  },
+  cancelButton: {
+    backgroundColor: '#dc3545',
+  },
+  disabledButton: {
+    backgroundColor: '#adb5bd',
+  },
+  navButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+    textAlign: 'center',
   },
-  backLink: {
-    marginTop: 10,
-    alignSelf: 'center',
-  },
-  backLinkText: {
-    color: COLORS.indicatorActive,
-    fontSize: 16,
-  },
-  bookingSummary: {
-    width: '100%',
-    padding: 15,
-    backgroundColor: COLORS.primary,
-    borderRadius: 8,
-    marginBottom: 15,
-  },
-  summaryTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 5,
-    color: COLORS.textPrimary,
-  },
-  summaryText: {
-    fontSize: 16,
-    color: COLORS.textPrimary,
-    marginBottom: 3,
-  },
-  modalBackground: {
+  modalContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
-  modalContainer: {
+  modalContent: {
     backgroundColor: '#fff',
-    borderRadius: 10,
+    borderRadius: 12,
     padding: 20,
     width: '90%',
+    maxHeight: '80%',
   },
-  modalButtonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 15,
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 20,
+    color: '#212529',
+    textAlign: 'center',
   },
-  cancelButton: {
-    backgroundColor: COLORS.button,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 5,
+  modalSubtitle: {
+    fontSize: 16,
+    color: '#6c757d',
+    textAlign: 'center',
   },
-  confirmButton: {
-    backgroundColor: COLORS.primary,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 5,
+  timeSlotScrollView: {
+    maxHeight: 300,
+    marginBottom: 20,
   },
-  timePickerHeader: {
+  noTimeSlotsText: {
+    color: '#6c757d',
+    fontSize: 16,
+    textAlign: 'center',
+  },
+  closeButton: {
+    backgroundColor: '#e9ecef',
+    borderRadius: 8,
+    padding: 15,
+    alignItems: 'center',
+  },
+  closeButtonText: {
     fontSize: 16,
     fontWeight: 'bold',
+    color: '#212529',
+  },
+  timeSelectionInfo: {
+    fontSize: 14,
+    color: '#6c757d',
     marginBottom: 10,
     textAlign: 'center',
   },
-  timeSlotGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
+  errorText: {
+    color: 'red',
+    fontSize: 14,
+    marginBottom: 10,
+    textAlign: 'center',
   },
-  timeSlot: {
-    width: '28%',
-    margin: 5,
-    padding: 10,
-    borderRadius: 5,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    alignItems: 'center',
+  selectedTimeRangeContainer: {
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+    padding: 15,
+    marginTop: 10,
+    marginBottom: 10,
   },
-  selectedTimeSlot: {
-    backgroundColor: COLORS.button,
-    borderColor: COLORS.button,
+  selectedTimeRangeLabel: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#212529',
+    marginBottom: 5,
   },
-  timeSlotText: {
-    color: '#333',
+  selectedTimeRangeText: {
+    fontSize: 16,
+    color: '#212529',
   },
 });
-
-export { COURTS, generateTimeSlots, formatTimeSlots }
 
 export default BookingPage;
