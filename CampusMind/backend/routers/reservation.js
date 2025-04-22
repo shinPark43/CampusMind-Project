@@ -309,4 +309,69 @@ router.get('/getAvailableCourts/:sportName', auth, async (req, res) => {
     }
 });
 
+router.get('/checkCourtAvailability', auth, async (req, res) => {
+    try {
+        const { sportName, date, startTime, endTime } = req.query;
+        
+        if (!sportName || !date || !startTime || !endTime) {
+            return res.status(400).json({ error: "All parameters (sportName, date, startTime, endTime) are required." });
+        }
+        
+        // Find the sport by name
+        const sport = await Sport.findOne({ sport_name: sportName });
+        if (!sport) {
+            return res.status(404).json({ error: "Sport not found." });
+        }
+        
+        // Find all courts for this sport
+        const courts = await Court.find({ sport_id: sport._id });
+        
+        // Get all reservations for these courts on the specified date
+        const reservations = await Reservation.find({
+            court_id: { $in: courts.map(court => court._id) },
+            date: date,
+            $or: [
+                { start_time: { $lt: endTime }, end_time: { $gt: startTime } }
+            ]
+        });
+        
+        // Create a map of court IDs to their reservations
+        const courtReservations = {};
+        reservations.forEach(reservation => {
+            if (!courtReservations[reservation.court_id]) {
+                courtReservations[reservation.court_id] = [];
+            }
+            courtReservations[reservation.court_id].push(reservation);
+        });
+        
+        // Filter out courts that are already reserved
+        const availableCourts = courts.filter(court => {
+            // If the court has no reservations, it's available
+            if (!courtReservations[court._id]) {
+                return true;
+            }
+            
+            // Check if any reservation overlaps with the requested time
+            return !courtReservations[court._id].some(reservation => {
+                return (
+                    (reservation.start_time < endTime && reservation.end_time > startTime)
+                );
+            });
+        });
+        
+        // Format the response
+        const formattedCourts = availableCourts.map(court => ({
+            _id: court._id,
+            court_name: court.court_name,
+            is_shared: court.is_shared,
+            shared_with: court.shared_with
+        }));
+        
+        res.status(200).json(formattedCourts);
+    } catch (error) {
+        console.error('Error checking court availability:', error.message);
+        res.status(500).json({ error: 'An error occurred while checking court availability.' });
+    }
+});
+
 export default router;

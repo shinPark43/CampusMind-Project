@@ -4,7 +4,7 @@ import { Sport } from '../models/sportModel.js';
 import { Court } from '../models/courtModel.js';
 
 // Load environment variables
-dotenv.config({ path: '../.env' });
+dotenv.config({ path: './.env' });
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URL)

@@ -7,6 +7,7 @@ import { Calendar } from 'react-native-calendars';
 import { useRouter } from 'expo-router';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from '@expo/vector-icons';
+import moment from 'moment';
 
 const SPORTS = [
   { name: 'Badminton', icon: 'https://img.icons8.com/color/48/000000/badminton.png' },
@@ -120,10 +121,10 @@ const BookingPage = () => {
   // State management
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedSport, setSelectedSport] = useState(null);
-  const [availableCourts, setAvailableCourts] = useState([]);
-  const [selectedCourt, setSelectedCourt] = useState(null);
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedTimeSlots, setSelectedTimeSlots] = useState([]);
+  const [availableCourts, setAvailableCourts] = useState([]);
+  const [selectedCourt, setSelectedCourt] = useState(null);
   const [loading, setLoading] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
@@ -136,42 +137,59 @@ const BookingPage = () => {
     }
   }, [selectedSport]);
 
-  const fetchAvailableCourts = async (sportName) => {
+  const fetchAvailableCourts = async () => {
+    if (!selectedSport || !selectedDate || selectedTimeSlots.length === 0) {
+      return;
+    }
+
     setLoading(true);
     try {
-      console.log('Fetching courts for sport:', sportName);
-      console.log('API URL:', process.env.EXPO_PUBLIC_API_URL);
-      
       const token = await AsyncStorage.getItem("token");
       if (!token) {
         Alert.alert("Error", "Please log in to book a court");
         router.push('/login');
         return;
       }
-      console.log('Token found:', token.substring(0, 10) + '...');
 
-      const url = `${process.env.EXPO_PUBLIC_API_URL}/reservations/getAvailableCourts/${sportName}`;
-      console.log('Request URL:', url);
+      // Get the start and end times from the selected time slots
+      const startTime = selectedTimeSlots[0];
+      const endTime = selectedTimeSlots[selectedTimeSlots.length - 1];
+      
+      // Convert times to 24-hour format for the API
+      const startTime24 = moment(startTime, ["h:mm A"]).format("HH:mm");
+      const endTime24 = moment(endTime, ["h:mm A"]).format("HH:mm");
+
+      console.log('Fetching available courts for:', {
+        sportName: selectedSport.name,
+        date: selectedDate,
+        startTime: startTime24,
+        endTime: endTime24
+      });
+
+      const url = `${process.env.EXPO_PUBLIC_API_URL}/reservations/checkCourtAvailability?sportName=${encodeURIComponent(selectedSport.name)}&date=${encodeURIComponent(selectedDate)}&startTime=${encodeURIComponent(startTime24)}&endTime=${encodeURIComponent(endTime24)}`;
       
       const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
       });
-      
+
       console.log('Response status:', response.status);
       
       const data = await response.json();
-      console.log('Response data:', data);
-      
+      console.log('Available courts:', data);
+
       if (response.ok) {
         setAvailableCourts(data);
+        if (data.length === 0) {
+          Alert.alert('No Available Courts', 'There are no available courts for the selected time. Please try a different time or date.');
+        }
       } else {
-        Alert.alert('Error', data.error || 'Failed to fetch courts');
+        Alert.alert('Error', data.error || 'Failed to fetch available courts');
       }
     } catch (error) {
-      console.error('Error fetching courts:', error);
-      Alert.alert('Error', `Failed to fetch courts: ${error.message}`);
+      console.error('Error fetching available courts:', error);
+      Alert.alert('Error', `Failed to fetch available courts: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -184,7 +202,7 @@ const BookingPage = () => {
 
   const handleCourtSelect = (court) => {
     setSelectedCourt(court);
-    setCurrentStep(3);
+    setCurrentStep(5);
   };
 
   const handleDateSelect = (date) => {
@@ -192,7 +210,7 @@ const BookingPage = () => {
     if (date && date.dateString) {
       setSelectedDate(date.dateString);
       setShowDatePicker(false);
-      setCurrentStep(4); // Move directly to time selection step
+      setCurrentStep(3); // Move to time selection step
     } else {
       console.error('Invalid date object:', date);
       Alert.alert('Error', 'Invalid date selected');
@@ -337,6 +355,14 @@ const BookingPage = () => {
 
       const data = await response.json();
       if (response.ok) {
+        // Reset all booking states
+        setSelectedSport(null);
+        setSelectedCourt(null);
+        setSelectedDate(null);
+        setSelectedTimeSlots([]);
+        setCurrentStep(1);
+        setTimeSelectionError('');
+        
         Alert.alert('Success', 'Court booked successfully!', [
           { 
             text: 'OK', 
@@ -425,9 +451,13 @@ const BookingPage = () => {
   const renderCourtSelection = () => (
     <View style={styles.stepContent}>
       <Text style={styles.stepTitle}>Select a Court</Text>
+      <Text style={styles.stepSubtitle}>
+        Available courts for {selectedSport?.name} on {selectedDate} from {formatSelectedTimeRange()}
+      </Text>
+      
       {loading ? (
         <ActivityIndicator size="large" color={COLORS.primary} />
-      ) : (
+      ) : availableCourts.length > 0 ? (
         <FlatList
           data={availableCourts}
           renderItem={({ item }) => (
@@ -438,7 +468,7 @@ const BookingPage = () => {
               <View style={styles.courtInfo}>
                 <Text style={styles.courtName}>{item.court_name}</Text>
                 <Text style={styles.courtStatus}>
-                  {item.is_available ? 'Available' : 'Unavailable'}
+                  Available
                 </Text>
               </View>
               {item.is_shared && (
@@ -450,20 +480,26 @@ const BookingPage = () => {
           )}
           keyExtractor={(item) => item._id}
         />
+      ) : (
+        <View style={styles.noCourtsContainer}>
+          <Text style={styles.noCourtsText}>No available courts found for the selected time.</Text>
+          <Text style={styles.noCourtsSubtext}>Please try a different time or date.</Text>
+        </View>
       )}
+      
       <View style={styles.navigationButtons}>
         <TouchableOpacity
           style={[styles.navButton, styles.backButton]}
-          onPress={() => setCurrentStep(1)}
+          onPress={() => setCurrentStep(2)}
         >
           <Text style={styles.navButtonText}>Back</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.navButton, styles.nextButton, !selectedCourt && styles.disabledButton]}
-          onPress={() => setCurrentStep(3)}
+          onPress={() => setCurrentStep(5)}
           disabled={!selectedCourt}
         >
-          <Text style={styles.navButtonText}>Next</Text>
+          <Text style={styles.navButtonText}>Review Booking</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -487,7 +523,7 @@ const BookingPage = () => {
       <View style={styles.navigationButtons}>
         <TouchableOpacity
           style={[styles.navButton, styles.backButton]}
-          onPress={() => setCurrentStep(2)}
+          onPress={() => setCurrentStep(1)}
         >
           <Text style={styles.navButtonText}>Back</Text>
         </TouchableOpacity>
@@ -541,16 +577,16 @@ const BookingPage = () => {
         <View style={styles.navigationButtons}>
           <TouchableOpacity
             style={[styles.navButton, styles.backButton]}
-            onPress={() => setCurrentStep(3)}
+            onPress={() => setCurrentStep(2)}
           >
             <Text style={styles.navButtonText}>Back</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.navButton, styles.nextButton, selectedTimeSlots.length === 0 && styles.disabledButton]}
-            onPress={() => setCurrentStep(5)}
+            onPress={handleTimeSelectionComplete}
             disabled={selectedTimeSlots.length === 0}
           >
-            <Text style={styles.navButtonText}>Review Booking</Text>
+            <Text style={styles.navButtonText}>Find Available Courts</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -600,6 +636,17 @@ const BookingPage = () => {
     </View>
   );
 
+  const handleTimeSelectionComplete = () => {
+    if (selectedTimeSlots.length === 0) {
+      Alert.alert('Error', 'Please select at least one time slot');
+      return;
+    }
+    
+    // Fetch available courts based on the selected sport, date, and time
+    fetchAvailableCourts();
+    setCurrentStep(4); // Move to court selection step
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.contentContainer}>
@@ -607,9 +654,9 @@ const BookingPage = () => {
         
         <View style={styles.stepsContainer}>
           {currentStep === 1 && renderSportSelection()}
-          {currentStep === 2 && renderCourtSelection()}
-          {currentStep === 3 && renderDateSelection()}
-          {currentStep === 4 && renderTimeSelection()}
+          {currentStep === 2 && renderDateSelection()}
+          {currentStep === 3 && renderTimeSelection()}
+          {currentStep === 4 && renderCourtSelection()}
           {currentStep === 5 && renderBookingSummary()}
         </View>
       </View>
@@ -956,6 +1003,24 @@ const styles = StyleSheet.create({
   selectedTimeRangeText: {
     fontSize: 16,
     color: '#212529',
+  },
+  noCourtsContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  noCourtsText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#212529',
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  noCourtsSubtext: {
+    fontSize: 16,
+    color: '#6c757d',
+    textAlign: 'center',
   },
 });
 
