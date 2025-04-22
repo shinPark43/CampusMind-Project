@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { Reservation } from '../models/reservationModel.js';
 import { User } from '../models/userModel.js';
 import { Sport } from '../models/sportModel.js';
+import { Court } from '../models/courtModel.js';
 import jwt from 'jsonwebtoken';
 import { auth } from '../middleware/middleware.js'; // Ensure the auth middleware is imported from middleware.js
 import mongoose from 'mongoose';
@@ -12,8 +13,8 @@ router.use(auth);
 
 router.post('/createReservation', auth, async (req, res) => {
     try {
-        const { sportName, date, time } = req.body;
-        console.log("Received data:", sportName, date, time);
+        const { sportName, courtName, date, time } = req.body;
+        console.log("Received data:", sportName, courtName, date, time);
 
         // Verify if the user exists in the database
         const user = await User.findById(req.user._id);
@@ -29,10 +30,23 @@ router.post('/createReservation', auth, async (req, res) => {
             return res.status(404).json({ error: "Sport not found." });
         }
 
+        // Find the court by name and sport_id
+        const court = await Court.findOne({ court_name: courtName, sport_id: sport._id });
+        if (!court) {
+            console.log("Error: Court not found for this sport.");
+            return res.status(404).json({ error: "Court not found for this sport." });
+        }
+
+        // Check if the court is available
+        if (!court.is_available) {
+            console.log("Error: Court is currently unavailable.");
+            return res.status(400).json({ error: "Court is currently unavailable." });
+        }
+
         // Validate required fields
-        if (!sportName || !date || !time) {
-            console.log("Error: All fields (sportName, date, time) are required.");
-            return res.status(400).json({ error: "All fields (sportName, date, time) are required." });
+        if (!sportName || !courtName || !date || !time) {
+            console.log("Error: All fields (sportName, courtName, date, time) are required.");
+            return res.status(400).json({ error: "All fields (sportName, courtName, date, time) are required." });
         }
 
         // Additional validation (e.g., date format, time format)
@@ -84,6 +98,7 @@ router.post('/createReservation', auth, async (req, res) => {
         const existingReservation = await Reservation.findOne({ 
             user_id: req.user._id,
             sport_id: sport._id,
+            court_id: court._id,
             date,
             start_time: startTime24,
             end_time: endTime24, 
@@ -94,9 +109,9 @@ router.post('/createReservation', auth, async (req, res) => {
             return res.status(400).json({ error: "You already have a reservation for this game on this date and time." });
         }
 
-        // Check for conflicting reservations
+        // Check for conflicting reservations for the same court
         const conflictingReservation = await Reservation.findOne({
-            sport_id: sport._id,
+            court_id: court._id,
             date,
             $or: [
                 { start_time: { $lt: endTime24 }, end_time: { $gt: startTime24 } }, // Overlaps with existing reservation
@@ -104,13 +119,14 @@ router.post('/createReservation', auth, async (req, res) => {
         });
 
         if (conflictingReservation) {
-            console.log("Error: Time conflict with an existing reservation.");
-            return res.status(400).json({ error: "Time conflict with an existing reservation for the same sport." });
+            console.log("Error: Time conflict with an existing reservation for this court.");
+            return res.status(400).json({ error: "Time conflict with an existing reservation for this court." });
         }
 
         const reservation = new Reservation({ 
             user_id: req.user._id, 
             sport_id: sport._id,
+            court_id: court._id,
             date, 
             start_time: startTime24,
             end_time: endTime24,
@@ -131,12 +147,15 @@ router.get('/getUserReservation', auth, async (req, res) => {
         const userId = req.user._id;
 
         // Fetch reservations for the user
-        const reservations = await Reservation.find({ user_id: userId }).populate('sport_id');
+        const reservations = await Reservation.find({ user_id: userId })
+            .populate('sport_id')
+            .populate('court_id');
 
         // Format start_time and end_time into "H:MM AM/PM - H:MM AM/PM"
         const formattedReservations = reservations.map((reservation) => ({
             _id: reservation._id,
             sportName: reservation.sport_id.sport_name,
+            courtName: reservation.court_id.court_name,
             date: reservation.date,
             time: `${moment(reservation.start_time, 'HH:mm').format('h:mm A')} - ${moment(reservation.end_time, 'HH:mm').format('h:mm A')}`,
         }));
@@ -260,6 +279,33 @@ router.put('/modifyReservation/:reservationId', auth, async (req, res) => {
     } catch (error) {
         console.error('Error updating reservation:', error.message);
         res.status(500).json({ error: 'An error occurred while updating the reservation' });
+    }
+});
+
+router.get('/getAvailableCourts/:sportName', auth, async (req, res) => {
+    try {
+        const { sportName } = req.params;
+        console.log('Fetching courts for sport:', sportName);
+
+        // Find the sport by name
+        const sport = await Sport.findOne({ sport_name: sportName });
+        if (!sport) {
+            console.log('Sport not found:', sportName);
+            return res.status(404).json({ error: 'Sport not found' });
+        }
+        console.log('Found sport:', sport);
+
+        // Find all available courts for this sport
+        const courts = await Court.find({ 
+            sport_id: sport._id,
+            is_available: true 
+        }).select('court_name is_shared shared_with');
+
+        console.log('Found courts:', courts);
+        res.status(200).json(courts);
+    } catch (error) {
+        console.error('Error in getAvailableCourts:', error);
+        res.status(500).json({ error: 'An error occurred while fetching available courts', details: error.message });
     }
 });
 

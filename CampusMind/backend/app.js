@@ -6,6 +6,7 @@ import './db/db.js'; // This will run the code in db.js
 import { logger, auth } from './middleware/middleware.js'; // Import the logger and auth middleware
 import reservationRouter from './routers/reservation.js'; // Import the reservation router
 import forgotPasswordRouter from './routers/forgotpassword.js'; //import the change password router
+import courtRouter from './routers/court.js'; // Import the court router
 
 
 // Load environment variables from .env file
@@ -24,6 +25,7 @@ app.use(logger); // Use the logger middleware
 app.use("/users", userRouter); // Use the user router with the /users prefix
 app.use(sportEquipmentRouter); // Use the sport equipment router
 app.use("/reservations", reservationRouter); // Use the reservation router with the /reservations prefix
+app.use("/courts", courtRouter); // Use the court router with the /courts prefix
 
 app.listen(port, () => {
     console.log(`Server is up on port ${port}`);

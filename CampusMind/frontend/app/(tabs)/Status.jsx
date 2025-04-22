@@ -19,7 +19,7 @@ import { COURTS } from './BookingPage'; // your courts array
 import { useFocusEffect } from '@react-navigation/native';
 import moment from 'moment';
 
-const API_URL = 'http://10.80.72.125:3000/reservations';
+const API_URL = 'http://192.168.1.50:3000/reservations';
 
 const StatusPage = () => {
   const [reservations, setReservations] = useState([]);

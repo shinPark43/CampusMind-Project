@@ -1,86 +1,162 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, ScrollView } from 'react-native';
-
-const mockCourtData = {
-    basketball: [
-    { name: 'Court A', reserved: false },                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   
-    { name: 'Court B', reserved: true },
-    { name: 'Court C', reserved: false },
-    { name: 'Court D', reserved: true },
-    ],
-    badminton: [
-    { name: 'Court A-1', reserved: true },
-    { name: 'Court A-2', reserved: false },
-    { name: 'Court B-1', reserved: false },
-    { name: 'Court B-2', reserved: true },
-    ],
-    tableTennis: [
-    { name: 'Table 1', reserved: false },
-    { name: 'Table 2', reserved: true },
-    ],
-};
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const CourtAvailabilityPage = () => {
+    const [courts, setCourts] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    useEffect(() => {
+        fetchCourts();
+    }, []);
+
+    const fetchCourts = async () => {
+        try {
+            const token = await AsyncStorage.getItem("token");
+            if (!token) {
+                setError("No token found!");
+                setLoading(false);
+                return;
+            }
+
+            const response = await fetch('http://192.168.1.50:3000/courts/getAllCourts', {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            const data = await response.json();
+            
+            if (response.ok) {
+                setCourts(data);
+            } else {
+                setError(data.error || 'Failed to fetch courts');
+            }
+        } catch (error) {
+            console.error('Error fetching courts:', error);
+            setError('Failed to fetch courts');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Group courts by sport
+    const groupedCourts = courts.reduce((acc, court) => {
+        const sportName = court.sport_name;
+        if (!acc[sportName]) {
+            acc[sportName] = [];
+        }
+        acc[sportName].push(court);
+        return acc;
+    }, {});
+
     const renderCourt = (court) => (
         <TouchableOpacity
-        key={court.name} // Add a unique key here
-        style={[
-            styles.court,
-            court.reserved ? styles.reserved : styles.available,
-        ]}
+            key={court._id}
+            style={[
+                styles.court,
+                court.is_available ? styles.available : styles.reserved,
+            ]}
         >
-        <Text style={styles.courtText}>{court.name}</Text>
+            <Text style={styles.courtText}>{court.court_name}</Text>
         </TouchableOpacity>
     );
 
+    if (loading) {
+        return (
+            <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#778FFF" />
+                <Text style={styles.loadingText}>Loading courts...</Text>
+            </View>
+        );
+    }
+
+    if (error) {
+        return (
+            <View style={styles.errorContainer}>
+                <Text style={styles.errorText}>{error}</Text>
+                <TouchableOpacity style={styles.retryButton} onPress={fetchCourts}>
+                    <Text style={styles.retryButtonText}>Retry</Text>
+                </TouchableOpacity>
+            </View>
+        );
+    }
+
     return (
         <ScrollView contentContainerStyle={styles.container}>
-        {/* Page Title */}
-        <Text style={styles.pageTitle}>Court Availability</Text>
+            {/* Page Title */}
+            <Text style={styles.pageTitle}>Court Availability</Text>
 
-        {/* Legend */}
-        <View style={styles.legendContainer}>
-            <View style={styles.legendItem}>
-            <View style={[styles.legendColor, styles.available]} />
-            <Text style={styles.legendText}>Available</Text>
+            {/* Legend */}
+            <View style={styles.legendContainer}>
+                <View style={styles.legendItem}>
+                    <View style={[styles.legendColor, styles.available]} />
+                    <Text style={styles.legendText}>Available</Text>
+                </View>
+                <View style={styles.legendItem}>
+                    <View style={[styles.legendColor, styles.reserved]} />
+                    <Text style={styles.legendText}>Reserved</Text>
+                </View>
             </View>
-            <View style={styles.legendItem}>
-            <View style={[styles.legendColor, styles.reserved]} />
-            <Text style={styles.legendText}>Reserved</Text>
-            </View>
-        </View>
 
-        {/* Basketball Courts */}
-        <Text style={styles.sectionTitle}>Basketball Courts</Text>
-        <View style={styles.grid}>
-            {mockCourtData.basketball.map((court) => renderCourt(court))}
-        </View>
-
-        {/* Badminton/Pickleball Courts */}
-        <Text style={styles.sectionTitle}>Badminton / Pickleball Courts</Text>
-        <View style={styles.grid}>
-            {mockCourtData.badminton.map((court) => renderCourt(court))}
-        </View>
-
-        {/* Table Tennis */}
-        <Text style={styles.sectionTitle}>Table Tennis</Text>
-        <FlatList
-            data={mockCourtData.tableTennis}
-            keyExtractor={(item) => item.name} // Ensure keyExtractor is set
-            renderItem={({ item }) => renderCourt(item)}
-            horizontal
-            contentContainerStyle={styles.tableTennisContainer}
-        />
+            {/* Render courts grouped by sport */}
+            {Object.entries(groupedCourts).map(([sportName, sportCourts]) => (
+                <View key={sportName}>
+                    <Text style={styles.sectionTitle}>{sportName} Courts</Text>
+                    <View style={styles.grid}>
+                        {sportCourts.map((court) => renderCourt(court))}
+                    </View>
+                </View>
+            ))}
         </ScrollView>
     );
-    };
+};
 
-    const styles = StyleSheet.create({
+const styles = StyleSheet.create({
     container: {
         flexGrow: 1,
         padding: 20,
         backgroundColor: '#1B263B',
         paddingBottom: 80, // Prevent overlap with the tab bar
+    },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#1B263B',
+    },
+    loadingText: {
+        color: '#FFF',
+        marginTop: 10,
+        fontSize: 16,
+    },
+    errorContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#1B263B',
+        padding: 20,
+    },
+    errorText: {
+        color: '#F56565',
+        fontSize: 16,
+        textAlign: 'center',
+        marginBottom: 20,
+    },
+    retryButton: {
+        backgroundColor: '#778FFF',
+        padding: 15,
+        borderRadius: 10,
+        width: '50%',
+    },
+    retryButtonText: {
+        color: '#FFF',
+        textAlign: 'center',
+        fontSize: 16,
+        fontWeight: 'bold',
     },
     pageTitle: {
         fontSize: 28,
