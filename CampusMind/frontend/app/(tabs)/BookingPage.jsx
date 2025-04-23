@@ -7,64 +7,64 @@ import { Calendar } from 'react-native-calendars';
 import { useRouter } from 'expo-router';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from '@expo/vector-icons';
+import moment from 'moment-timezone';
 
 const SPORTS = [
   { name: 'Badminton', icon: 'https://img.icons8.com/color/48/000000/badminton.png' },
   { name: 'Basketball', icon: 'https://img.icons8.com/color/48/000000/basketball.png' },
   { name: 'Table Tennis', icon: 'https://img.icons8.com/color/48/000000/table-tennis.png' },
-  { name: 'Pickleball', icon: 'https://img.icons8.com/color/48/000000/pickle-ball.png' },
+  { name: 'Pickleball', icon: 'https://img.icons8.com/color/48/000000/tennis.png' },
 ];
 
 // Generate 30-Minute Time Slots based on day of the week
 const generateTimeSlots = (dateString) => {
-  console.log('Generating time slots for date:', dateString);
+  console.log('[generateTimeSlots] Generating slots for date:', dateString);
   
   if (!dateString) {
-    console.log('No date string provided, returning empty array');
     return [];
   }
-  
-  const date = new Date(dateString);
-  const dayOfWeek = date.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
-  console.log('Day of week:', dayOfWeek);
+
+  const centralTimeZone = 'America/Chicago';
+  // Ensure the selected date is parsed correctly at the start of the day in CT
+  const selectedDate = moment.tz(dateString, 'YYYY-MM-DD', centralTimeZone).startOf('day'); 
+  const now = moment.tz(centralTimeZone); // Current time in CT
+
+  const dayOfWeek = selectedDate.day();
 
   let start, end;
-
-  if (dayOfWeek >= 1 && dayOfWeek <= 4) { // Monday to Thursday
-    start = '13:00'; // 1 PM
-    end = '23:00';   // 11 PM
-  } else if (dayOfWeek === 5) { // Friday
-    start = '13:00'; // 1 PM
-    end = '20:00';   // 8 PM
-  } else { // Saturday and Sunday
-    start = '12:00'; // 12 PM
-    end = '20:00';   // 8 PM
-  }
+  if (dayOfWeek >= 1 && dayOfWeek <= 4) { start = '13:00'; end = '23:00'; }
+  else if (dayOfWeek === 5) { start = '13:00'; end = '20:00'; }
+  else { start = '12:00'; end = '20:00'; }
   
-  console.log('Time range:', start, 'to', end);
-
   const slots = [];
-  let [hour, minute] = start.split(':').map(Number);
-  const [endHour, endMinute] = end.split(':').map(Number);
+  let currentSlotMoment = moment(start, 'HH:mm'); // Start time as moment object
+  const endTimeMoment = moment(end, 'HH:mm'); // End time as moment object
 
-  // Convert end time to minutes for easier comparison
-  const endTimeInMinutes = endHour * 60 + endMinute;
+  // Check if the selected date is today
+  const isToday = selectedDate.isSame(now, 'day');
   
-  // Generate 30-minute slots
-  while (hour * 60 + minute < endTimeInMinutes) {
-    const currentTime = `${hour}:${String(minute).padStart(2, '0')}`;
-    const formattedSlot = formatTimeToAMPM(currentTime);
-    slots.push(formattedSlot);
+  // Generate slots
+  while (currentSlotMoment.isBefore(endTimeMoment)) {
+    let shouldAddSlot = true; 
+
+    if (isToday) {
+      // Create a full datetime moment for the current slot *on today's date* in CT
+      const slotDateTime = moment.tz(dateString + ' ' + currentSlotMoment.format('HH:mm'), 'YYYY-MM-DD HH:mm', centralTimeZone);
+      
+      // If the slot's start time is before the current time, skip it
+      if (slotDateTime.isBefore(now)) {
+        shouldAddSlot = false;
+      }
+    }
+
+    if (shouldAddSlot) {
+      slots.push(currentSlotMoment.format('h:mm A'));
+    }
     
     // Move to the next 30-minute slot
-    minute += 30;
-    if (minute === 60) {
-      minute = 0;
-      hour++;
-    }
+    currentSlotMoment.add(30, 'minutes');
   }
   
-  console.log('Generated slots:', slots);
   return slots;
 };
 
@@ -120,10 +120,10 @@ const BookingPage = () => {
   // State management
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedSport, setSelectedSport] = useState(null);
-  const [availableCourts, setAvailableCourts] = useState([]);
-  const [selectedCourt, setSelectedCourt] = useState(null);
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedTimeSlots, setSelectedTimeSlots] = useState([]);
+  const [availableCourts, setAvailableCourts] = useState([]);
+  const [selectedCourt, setSelectedCourt] = useState(null);
   const [loading, setLoading] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
@@ -136,42 +136,59 @@ const BookingPage = () => {
     }
   }, [selectedSport]);
 
-  const fetchAvailableCourts = async (sportName) => {
+  const fetchAvailableCourts = async () => {
+    if (!selectedSport || !selectedDate || selectedTimeSlots.length === 0) {
+      return;
+    }
+
     setLoading(true);
     try {
-      console.log('Fetching courts for sport:', sportName);
-      console.log('API URL:', process.env.EXPO_PUBLIC_API_URL);
-      
       const token = await AsyncStorage.getItem("token");
       if (!token) {
         Alert.alert("Error", "Please log in to book a court");
         router.push('/login');
         return;
       }
-      console.log('Token found:', token.substring(0, 10) + '...');
 
-      const url = `${process.env.EXPO_PUBLIC_API_URL}/reservations/getAvailableCourts/${sportName}`;
-      console.log('Request URL:', url);
+      // Get the start and end times from the selected time slots
+      const startTime = selectedTimeSlots[0];
+      const endTime = selectedTimeSlots[selectedTimeSlots.length - 1];
+      
+      // Convert times to 24-hour format for the API
+      const startTime24 = moment(startTime, ["h:mm A"]).format("HH:mm");
+      const endTime24 = moment(endTime, ["h:mm A"]).format("HH:mm");
+
+      console.log('Fetching available courts for:', {
+        sportName: selectedSport.name,
+        date: selectedDate,
+        startTime: startTime24,
+        endTime: endTime24
+      });
+
+      const url = `${process.env.EXPO_PUBLIC_API_URL}/reservations/checkCourtAvailability?sportName=${encodeURIComponent(selectedSport.name)}&date=${encodeURIComponent(selectedDate)}&startTime=${encodeURIComponent(startTime24)}&endTime=${encodeURIComponent(endTime24)}`;
       
       const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
       });
-      
+
       console.log('Response status:', response.status);
       
       const data = await response.json();
-      console.log('Response data:', data);
-      
+      console.log('Available courts:', data);
+
       if (response.ok) {
         setAvailableCourts(data);
+        if (data.length === 0) {
+          Alert.alert('No Available Courts', 'There are no available courts for the selected time. Please try a different time or date.');
+        }
       } else {
-        Alert.alert('Error', data.error || 'Failed to fetch courts');
+        Alert.alert('Error', data.error || 'Failed to fetch available courts');
       }
     } catch (error) {
-      console.error('Error fetching courts:', error);
-      Alert.alert('Error', `Failed to fetch courts: ${error.message}`);
+      console.error('Error fetching available courts:', error);
+      Alert.alert('Error', `Failed to fetch available courts: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -184,18 +201,51 @@ const BookingPage = () => {
 
   const handleCourtSelect = (court) => {
     setSelectedCourt(court);
-    setCurrentStep(3);
+    setCurrentStep(5);
   };
 
   const handleDateSelect = (date) => {
-    console.log('Date selected:', date);
-    if (date && date.dateString) {
-      setSelectedDate(date.dateString);
-      setShowDatePicker(false);
-      setCurrentStep(4); // Move directly to time selection step
-    } else {
-      console.error('Invalid date object:', date);
+    if (!date || !date.dateString) {
+      console.error('Invalid date object received from calendar:', date);
       Alert.alert('Error', 'Invalid date selected');
+      return;
+    }
+
+    const centralTimeZone = 'America/Chicago';
+    const selectedDateStr = date.dateString; // e.g., "2024-07-22"
+
+    try {
+      // Get current date in CT
+      const now = moment.tz(centralTimeZone);
+      const nowDate = now.format('YYYY-MM-DD');
+      
+      // Parse selected date
+      const selectedDate = moment.tz(selectedDateStr, 'YYYY-MM-DD', centralTimeZone);
+      const selectedDateFormatted = selectedDate.format('YYYY-MM-DD');
+      
+      // Compare dates
+      const isPast = selectedDateFormatted < nowDate;
+
+      if (isPast) {
+        Alert.alert(
+          'Invalid Date',
+          'Please select today or a future date.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      // If we get here, the date is valid (today or future)
+      setSelectedDate(selectedDateStr);
+      setShowDatePicker(false);
+      setCurrentStep(3); // Move to time selection step
+    } catch (error) {
+      console.error('Error processing date selection:', error);
+      Alert.alert(
+        'Error',
+        'There was an error processing your date selection. Please try again.',
+        [{ text: 'OK' }]
+      );
     }
   };
 
@@ -337,6 +387,14 @@ const BookingPage = () => {
 
       const data = await response.json();
       if (response.ok) {
+        // Reset all booking states
+        setSelectedSport(null);
+        setSelectedCourt(null);
+        setSelectedDate(null);
+        setSelectedTimeSlots([]);
+        setCurrentStep(1);
+        setTimeSelectionError('');
+        
         Alert.alert('Success', 'Court booked successfully!', [
           { 
             text: 'OK', 
@@ -425,9 +483,13 @@ const BookingPage = () => {
   const renderCourtSelection = () => (
     <View style={styles.stepContent}>
       <Text style={styles.stepTitle}>Select a Court</Text>
+      <Text style={styles.stepSubtitle}>
+        Available courts for {selectedSport?.name} on {selectedDate} from {formatSelectedTimeRange()}
+      </Text>
+      
       {loading ? (
         <ActivityIndicator size="large" color={COLORS.primary} />
-      ) : (
+      ) : availableCourts.length > 0 ? (
         <FlatList
           data={availableCourts}
           renderItem={({ item }) => (
@@ -438,7 +500,7 @@ const BookingPage = () => {
               <View style={styles.courtInfo}>
                 <Text style={styles.courtName}>{item.court_name}</Text>
                 <Text style={styles.courtStatus}>
-                  {item.is_available ? 'Available' : 'Unavailable'}
+                  Available
                 </Text>
               </View>
               {item.is_shared && (
@@ -450,20 +512,26 @@ const BookingPage = () => {
           )}
           keyExtractor={(item) => item._id}
         />
+      ) : (
+        <View style={styles.noCourtsContainer}>
+          <Text style={styles.noCourtsText}>No available courts found for the selected time.</Text>
+          <Text style={styles.noCourtsSubtext}>Please try a different time or date.</Text>
+        </View>
       )}
+      
       <View style={styles.navigationButtons}>
         <TouchableOpacity
           style={[styles.navButton, styles.backButton]}
-          onPress={() => setCurrentStep(1)}
+          onPress={() => setCurrentStep(2)}
         >
           <Text style={styles.navButtonText}>Back</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.navButton, styles.nextButton, !selectedCourt && styles.disabledButton]}
-          onPress={() => setCurrentStep(3)}
+          onPress={() => setCurrentStep(5)}
           disabled={!selectedCourt}
         >
-          <Text style={styles.navButtonText}>Next</Text>
+          <Text style={styles.navButtonText}>Review Booking</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -472,11 +540,17 @@ const BookingPage = () => {
   const renderDateSelection = () => (
     <View style={styles.stepContent}>
       <Text style={styles.stepTitle}>Select Date</Text>
+      <Text style={styles.stepSubtitle}>
+        {moment().format('YYYY-MM-DD')} (Today) and future dates are available
+      </Text>
       <Calendar
-        onDayPress={handleDateSelect}
-        minDate={new Date().toISOString().split('T')[0]}
+        onDayPress={(day) => {
+          handleDateSelect(day);
+        }}
+        minDate={moment().format('YYYY-MM-DD')}
         markedDates={{
-          [selectedDate]: { selected: true, selectedColor: COLORS.primary }
+          [selectedDate]: { selected: true, selectedColor: COLORS.primary },
+          [moment().format('YYYY-MM-DD')]: { marked: true, dotColor: COLORS.primary }
         }}
         theme={{
           selectedDayBackgroundColor: COLORS.primary,
@@ -487,7 +561,7 @@ const BookingPage = () => {
       <View style={styles.navigationButtons}>
         <TouchableOpacity
           style={[styles.navButton, styles.backButton]}
-          onPress={() => setCurrentStep(2)}
+          onPress={() => setCurrentStep(1)}
         >
           <Text style={styles.navButtonText}>Back</Text>
         </TouchableOpacity>
@@ -496,9 +570,7 @@ const BookingPage = () => {
   );
 
   const renderTimeSelection = () => {
-    console.log('Rendering time selection for date:', selectedDate);
     const timeSlots = generateTimeSlots(selectedDate);
-    console.log('Generated time slots:', timeSlots);
     
     return (
       <View style={styles.stepContent}>
@@ -541,16 +613,16 @@ const BookingPage = () => {
         <View style={styles.navigationButtons}>
           <TouchableOpacity
             style={[styles.navButton, styles.backButton]}
-            onPress={() => setCurrentStep(3)}
+            onPress={() => setCurrentStep(2)}
           >
             <Text style={styles.navButtonText}>Back</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.navButton, styles.nextButton, selectedTimeSlots.length === 0 && styles.disabledButton]}
-            onPress={() => setCurrentStep(5)}
+            onPress={handleTimeSelectionComplete}
             disabled={selectedTimeSlots.length === 0}
           >
-            <Text style={styles.navButtonText}>Review Booking</Text>
+            <Text style={styles.navButtonText}>Find Available Courts</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -600,6 +672,25 @@ const BookingPage = () => {
     </View>
   );
 
+  const handleTimeSelectionComplete = () => {
+    if (selectedTimeSlots.length === 0) {
+      Alert.alert('Error', 'Please select at least one time slot');
+      return;
+    }
+    
+    // Fetch available courts based on the selected sport, date, and time
+    fetchAvailableCourts();
+    setCurrentStep(4); // Move to court selection step
+  };
+
+  const handleBookingComplete = () => {
+    // Reset the booking state
+    setSelectedSport(null);
+    setSelectedDate(null);
+    setSelectedTimeSlots([]);
+    setCurrentStep(1);
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.contentContainer}>
@@ -607,9 +698,9 @@ const BookingPage = () => {
         
         <View style={styles.stepsContainer}>
           {currentStep === 1 && renderSportSelection()}
-          {currentStep === 2 && renderCourtSelection()}
-          {currentStep === 3 && renderDateSelection()}
-          {currentStep === 4 && renderTimeSelection()}
+          {currentStep === 2 && renderDateSelection()}
+          {currentStep === 3 && renderTimeSelection()}
+          {currentStep === 4 && renderCourtSelection()}
           {currentStep === 5 && renderBookingSummary()}
         </View>
       </View>
@@ -642,23 +733,25 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     flex: 1,
-    paddingBottom: 80, // Add padding to prevent overlap with tabs
+    paddingBottom: 80,
   },
   stepsContainer: {
     flex: 1,
+    width: '100%',
   },
   stepIndicator: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 20,
     paddingVertical: 15,
     backgroundColor: '#f8f9fa',
+    width: '100%',
   },
   stepContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    flex: 1,
+    justifyContent: 'center',
+    marginHorizontal: 5,
   },
   step: {
     width: 30,
@@ -668,29 +761,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  activeStep: {
-    backgroundColor: COLORS.primary,
-  },
-  stepText: {
-    color: '#6c757d',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  activeStepText: {
-    color: '#fff',
-  },
   stepLine: {
-    flex: 1,
+    width: 40,
     height: 2,
     backgroundColor: '#e9ecef',
     marginHorizontal: 5,
   },
-  activeStepLine: {
-    backgroundColor: COLORS.primary,
-  },
   stepContent: {
     flex: 1,
     padding: 20,
+    width: '100%',
   },
   stepTitle: {
     fontSize: 24,
@@ -707,11 +787,12 @@ const styles = StyleSheet.create({
   sportGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    justifyContent: 'space-around',
     paddingHorizontal: 10,
+    width: '100%',
   },
   sportCard: {
-    width: '48%',
+    width: '45%',
     aspectRatio: 1,
     backgroundColor: '#fff',
     borderRadius: 16,
@@ -767,40 +848,42 @@ const styles = StyleSheet.create({
   },
   courtCard: {
     backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 15,
-    marginBottom: 10,
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 8,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowRadius: 2,
+    elevation: 2,
+    width: '100%',
   },
   courtInfo: {
     flex: 1,
   },
   courtName: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
     color: '#212529',
-    marginBottom: 5,
+    marginBottom: 2,
   },
   courtStatus: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#6c757d',
   },
   sharedBadge: {
     backgroundColor: COLORS.primary,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 15,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginLeft: 8,
   },
   sharedText: {
     color: '#fff',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
   },
   timeSlot: {
@@ -809,6 +892,7 @@ const styles = StyleSheet.create({
     padding: 15,
     marginBottom: 10,
     alignItems: 'center',
+    width: '100%',
   },
   selectedTimeSlot: {
     backgroundColor: COLORS.primary,
@@ -831,6 +915,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+    width: '100%',
   },
   summaryRow: {
     flexDirection: 'row',
@@ -852,6 +937,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
     paddingHorizontal: 10,
     paddingBottom: 20,
+    width: '100%',
   },
   navButton: {
     flex: 1,
@@ -956,6 +1042,24 @@ const styles = StyleSheet.create({
   selectedTimeRangeText: {
     fontSize: 16,
     color: '#212529',
+  },
+  noCourtsContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  noCourtsText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#212529',
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  noCourtsSubtext: {
+    fontSize: 16,
+    color: '#6c757d',
+    textAlign: 'center',
   },
 });
 

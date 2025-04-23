@@ -1,7 +1,9 @@
 import { Router } from 'express';
 import { Court } from '../models/courtModel.js';
 import { Sport } from '../models/sportModel.js';
+import { Reservation } from '../models/reservationModel.js';
 import { auth } from '../middleware/middleware.js';
+import moment from 'moment';
 
 const router = Router();
 router.use(auth);
@@ -32,12 +34,30 @@ router.get('/getAllCourts', auth, async (req, res) => {
     try {
         const courts = await Court.find().populate('sport_id');
         
-        // Format the response
+        // Get current date and time
+        const currentDate = moment().format('YYYY-MM-DD');
+        const currentTime = moment().format('HH:mm');
+        
+        // Get all reservations for today
+        const reservations = await Reservation.find({
+            date: currentDate,
+            $or: [
+                { start_time: { $lte: currentTime }, end_time: { $gt: currentTime } }
+            ]
+        }).populate('court_id');
+        
+        // Create a map of court IDs to their reservation status
+        const courtReservations = {};
+        reservations.forEach(reservation => {
+            courtReservations[reservation.court_id._id.toString()] = true;
+        });
+        
+        // Format the response with actual availability based on reservations
         const formattedCourts = courts.map(court => ({
             _id: court._id,
             court_name: court.court_name,
             sport_name: court.sport_id.sport_name,
-            is_available: court.is_available
+            is_available: !courtReservations[court._id.toString()]
         }));
         
         res.status(200).json(formattedCourts);

@@ -34,34 +34,40 @@ const connectDB = async () => {
 };
 
 // const sportSchema = new Schema({
-//     sport_id: { type: Number, required: true, trim: true, unique: true },
-//     sport_name : { type: String, required: true, trim: true, unique: true },
+//     sport_name: { type: String, required: true, trim: true, unique: true },
 // });
 
 // const reservationSchema = new Schema({
-//     reservation_id: { type: Number, required: true, trim: true, unique: true },
 //     user_id: { type: Schema.Types.ObjectId, required: true, trim: true, ref: 'User' },
 //     sport_id: { type: Schema.Types.ObjectId, required: true, trim: true, ref: 'Sport' },
-//     date: { type: Date, required: true },
-//     time: { type: String, required: true },
+//     court_id: { type: Schema.Types.ObjectId, required: true, trim: true, ref: 'Court' },
+//     date: { type: String, required: true },
+//     start_time: { type: String, required: true },
+//     end_time: { type: String, required: true },
 // });
 
-// // Apply middleware to reservationSchema
-// reservationMiddleware(reservationSchema);
+// Apply middleware to reservationSchema
+reservationMiddleware(reservationSchema);
 
 // const sport_equipmentSchema = new Schema({
-//     equipment_id: { type: Number, required: true, trim: true, unique: true },
 //     sport_id: { type: Schema.Types.ObjectId, required: true, trim: true, ref: 'Sport' },
 //     equipment_name: { type: String, trim: true, required: true },
 //     quantity: { type: Number, trim: true, required: true },
 // });
 
-// // Check if models already exist before defining them
-// const User = models.User || model('User', userSchema);
-// const Sport = models.Sport || model('Sport', sportSchema);
-// const Reservation = models.Reservation || model('Reservation', reservationSchema);
-// const SportEquipment = models.SportEquipment || model('SportEquipment', sport_equipmentSchema);
+// const courtSchema = new Schema({
+//     court_name: { type: String, required: true, trim: true },
+//     sport_id: { type: Schema.Types.ObjectId, required: true, trim: true, ref: 'Sport' },
+//     is_available: { type: Boolean, default: true },
+// });
+
+// Check if models already exist before defining them
+const User = models.User || model('User', userSchema);
+const Sport = models.Sport || model('Sport', sportSchema);
+const Reservation = models.Reservation || model('Reservation', reservationSchema);
+const SportEquipment = models.SportEquipment || model('SportEquipment', sport_equipmentSchema);
+const Court = models.Court || model('Court', courtSchema);
 
 connectDB();
 
-// export { User, Sport, Reservation, SportEquipment };
+export { User, Sport, Reservation, SportEquipment, Court };

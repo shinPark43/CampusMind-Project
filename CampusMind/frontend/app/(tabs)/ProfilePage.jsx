@@ -12,10 +12,10 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MaterialIcons } from '@expo/vector-icons'; // For the person icon
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
-
-const API_URL = 'http://192.168.1.50:3000/users'; // Replace with your backend URL
+import { useRouter } from 'expo-router';
 
 const UserProfilePage = () => {
+  const router = useRouter();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [CID, setCID] = useState('');
@@ -29,7 +29,7 @@ const UserProfilePage = () => {
         const token = await AsyncStorage.getItem('token');
         if (!token) throw new Error('User not authenticated');
 
-        const response = await fetch(`${API_URL}/getUserProfile`, {
+        const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/users/getUserProfile`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -66,7 +66,7 @@ const UserProfilePage = () => {
       const token = await AsyncStorage.getItem('token');
       if (!token) throw new Error('User not authenticated');
 
-      const response = await fetch(`${API_URL}/updateUserProfile`, {
+      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/users/updateUserProfile`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -85,6 +85,16 @@ const UserProfilePage = () => {
     } catch (error) {
       console.error('Error updating profile:', error);
       Alert.alert('Error', 'Unable to update profile');
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await AsyncStorage.removeItem('token');
+      router.replace('/');
+    } catch (error) {
+      console.error('Error during logout:', error);
+      Alert.alert('Error', 'Failed to logout. Please try again.');
     }
   };
 
@@ -126,9 +136,17 @@ const UserProfilePage = () => {
 
               <TouchableOpacity
                 style={styles.button}
-                onPress={() => setIsEditing(true)} // Switch to edit mode
+                onPress={() => setIsEditing(true)}
               >
                 <Text style={styles.buttonText}>Edit Profile</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.button, styles.logoutButton]}
+                onPress={handleLogout}
+              >
+                <MaterialIcons name="logout" size={24} color="#FFF" style={styles.logoutIcon} />
+                <Text style={styles.buttonText}>Logout</Text>
               </TouchableOpacity>
             </View>
           ) : (
@@ -265,6 +283,22 @@ const styles = StyleSheet.create({
     color: '#FFF',
     textAlign: 'center',
     fontSize: 18,
+    fontWeight: 'bold',
+  },
+  logoutButton: {
+    marginTop: 10,
+    backgroundColor: '#F44336', // Red color for logout
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  logoutIcon: {
+    marginRight: 10,
+  },
+  logoutText: {
+    color: '#FFF',
+    marginLeft: 5,
+    fontSize: 16,
     fontWeight: 'bold',
   },
 });
