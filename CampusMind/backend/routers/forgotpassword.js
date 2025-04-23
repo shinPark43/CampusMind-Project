@@ -24,6 +24,7 @@ import express from 'express';
          user.resetToken = resetToken;
          user.resetTokenExpiry = resetTokenExpiry;
          await user.save();
+         console.log("✅ Token saved to user:", user.resetToken);
  
          // Send reset email
          await sendPasswordResetEmail(user.email, resetToken);
@@ -37,12 +38,22 @@ import express from 'express';
  
  router.patch('/reset-password', async (req, res) => {   //This is the actual link in the email, basically this handles some of the reset logic
      const { token, newPassword } = req.body;
+     console.log("🔁 Reset Password Body:", req.body);
  
      try {
-         const user = await User.findOne({
-             resetToken: token,
-             resetTokenExpiry: { $gt: Date.now() } // Check token not expired
-         });
+        console.log("🔍 Looking for user with token:", token);
+    
+        const user = await User.findOne({
+          resetToken: token,
+          resetTokenExpiry: { $gt: Date.now() }
+        });
+    
+        console.log("👤 Found user:", user);
+        const debugUser = await User.findOne({});
+console.log("🔎 Sample user in DB:", debugUser?.resetToken);
+        if (!user) {
+          return res.status(400).json({ error: 'Invalid or expired reset token.' });
+        }
  
          if (!user) {
              return res.status(400).json({ error: 'Invalid or expired reset token.' });

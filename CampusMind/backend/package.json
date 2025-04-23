@@ -6,7 +6,7 @@
     "type": "module",
     "scripts": {
         "test": "echo \"Error: no test specified\" && exit 1",
-        "start": "env-cmd -f ./Back-end/.env nodemon ./Back-end/app.js"
+        "start": "env-cmd -f .env nodemon ./Back-end/app.js"
     },
     "author": "Luan Le",
     "license": "ISC",

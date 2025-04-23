@@ -18,8 +18,9 @@ import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { COURTS } from './BookingPage'; // your courts array
 import { useFocusEffect } from '@react-navigation/native';
 import moment from 'moment';
+import { API_URL } from "@env";
 
-const API_URL = 'http://10.80.72.125:3000/reservations';
+const RESERVATION_API = `${API_URL}/reservations`;
 
 const StatusPage = () => {
   const [reservations, setReservations] = useState([]);

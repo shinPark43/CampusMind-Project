@@ -1,13 +1,13 @@
 import dotenv from 'dotenv'; // Import dotenv
 import axios from 'axios';
-
+import { API_URL } from "@env";
 // Load environment variables from .env file
 dotenv.config({ path: `.env.${process.env.NODE_ENV}` });
 
 // Function to create a new user
 const createUser = async (userData) => {
     try {
-        const response = await axios.post('http://192.168.1.167:3000/createUser', userData); // Use the correct API endpoint
+        const response = await axios.post(`${API_URL}/createUser`, userData); // Use the correct API endpoint
         console.log('User created:', response.data);
     } catch (error) {
         if (error.response) {

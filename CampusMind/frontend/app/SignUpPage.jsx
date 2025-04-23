@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view'; // Import the library
-
+import { API_URL } from "@env";
 const SignUpScreen = () => {
   const navigation = useNavigation();
 
@@ -36,7 +36,7 @@ const SignUpScreen = () => {
       Alert.alert('Error', 'CID must be exactly 8 digits long and contain only numbers.');
     } else {
       try {
-        const response = await fetch('http://10.80.72.125:3000/users/createUser', {
+        const response = await fetch(`${API_URL}/users/createUser`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

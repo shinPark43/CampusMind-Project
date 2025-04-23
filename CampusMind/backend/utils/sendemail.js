@@ -1,6 +1,8 @@
 //This is the fle that sends emails to users and lets them change their password
 import postmark from 'postmark';
- 
+
+
+
 //Postmarkserver APIKEY
 const client = new postmark.ServerClient(process.env.POSTMARK_API_KEY);
 
@@ -9,7 +11,7 @@ const client = new postmark.ServerClient(process.env.POSTMARK_API_KEY);
  */
 export const sendPasswordResetEmail = async (to, resetToken) => {
     try {
-        const resetUrl = `https://scaling-waddle-wr5q6qrrvv7x254pr-3000.app.github.dev/reset-password?token=${resetToken}`;
+        const resetUrl = `http://192.168.12.107:8081/(tabs)/reset-passwordpage?token=${resetToken}`;
         
         await client.sendEmail({
             From: "campusmind@resetpassword.xyz",
@@ -17,7 +19,7 @@ export const sendPasswordResetEmail = async (to, resetToken) => {
             Subject: "Password Reset Request",
             TextBody: `You requested a password reset. Click the link to reset your password: ${resetUrl}`,
             HtmlBody: `
-            <p>You requested a password reset.</p>
+            <p>You requested a password reset from the CampusMind app.</p>
             <p>Click the button below to reset your password:</p>
             <a href="${resetUrl}"" style="background-color:#4CAF50;color:white;padding:10px 15px;text-decoration:none;border-radius:5px;">Reset Password</a>
             <p>If you did not request this, please ignore this email.</p>

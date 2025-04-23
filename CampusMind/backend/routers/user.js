@@ -55,8 +55,8 @@ router.post('/userLogin', async (req, res) => {
         
         return res.json({ token }); // Respond with the token and client should store it in local storage like await AsyncStorage.setItem("token", data.token); and use it in the headers like await AsyncStorage.getItem("token");
     } catch (error) {
-        console.error(error);
-        res.status(400).send({ error: 'An error occurred' });
+        console.error('Login error:', error.message);
+        res.status(400).send({ error: error.message });
     }
 });
 

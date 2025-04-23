@@ -15,6 +15,7 @@ import { Link, useRouter } from 'expo-router';
 import Icon from 'react-native-vector-icons/Feather';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view'; // Import the library
+import { API_URL } from "@env";
 
 const LoginPage = () => {
   const router = useRouter();
@@ -26,7 +27,7 @@ const LoginPage = () => {
     setPasswordVisible(!passwordVisible);
   };
 
-  const handleLogin = async () => {
+ /* const handleLogin = async () => {
     if (email === '' || password === '') {
       Alert.alert('Error', 'Please enter both email and password.');
     } else if (!email.endsWith('@angelo.edu')) {
@@ -35,7 +36,7 @@ const LoginPage = () => {
       Alert.alert('Error', 'Password must be at least 8 characters long.');
     } else {
       try {
-        const response = await fetch('http://10.80.72.125:3000/users/userLogin', {
+        const response = await fetch(`${API_URL}/api/auth/userLogin`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -61,10 +62,80 @@ const LoginPage = () => {
         Alert.alert('Error', 'Something went wrong. Please try again later.');
       }
     }
+  };*/
+  const handleLogin = async () => {
+    if (email === '' || password === '') {
+      Alert.alert('Error', 'Please enter both email and password.');
+    } else if (!email.endsWith('@angelo.edu')) {
+      Alert.alert('Error', 'Email must end with @angelo.edu.');
+    } else if (password.length < 8) {
+      Alert.alert('Error', 'Password must be at least 8 characters long.');
+    } else {
+      try {
+        const response = await fetch(`${API_URL}/api/auth/userLogin`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email, password }),
+        });
+  
+        // 🔍 Debug: See what the server is actually returning
+        const text = await response.text();
+        console.log('Raw response:', text);
+  
+        let data = {};
+        try {
+          data = JSON.parse(text);
+        } catch (error) {
+          console.error('Failed to parse JSON:', error);
+          Alert.alert('Login Error', 'Server returned an invalid response.');
+          return;
+        }
+  
+        if (response.ok) {
+          if (data.token) {
+            await AsyncStorage.setItem('token', data.token);
+            Alert.alert('Success', 'Login successful', [
+              {
+                text: 'OK',
+                onPress: () => router.push('/explore'),
+              },
+            ]);
+          } else {
+            Alert.alert('Login Error', 'No token received from server.');
+          }
+        } else {
+          Alert.alert('Error', data.error || 'Login failed');
+        }
+      } catch (error) {
+        console.error(error);
+        Alert.alert('Error', 'Something went wrong. Please try again later.');
+      }
+    }
   };
-
-  const handleForgotPassword = () => {
-    Alert.alert('Forgot Password', 'Redirecting to password reset page...');
+  const handleForgotPassword = async () => {
+    if (!email || !email.endsWith('@angelo.edu')) {
+      return Alert.alert('Invalid Email', 'Please input a valid @angelo.edu email.');
+    }
+  
+    try {
+      const response = await fetch(`${API_URL}/api/auth/forgot-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
+  
+      const data = await response.json();
+  
+      if (!response.ok) throw new Error(data.message || 'Failed to send reset email');
+  
+      Alert.alert('Success', 'Reset email sent successfully');
+    } catch (error) {
+      Alert.alert('Error', error.message || 'An error occurred');
+    }
   };
 
   return (

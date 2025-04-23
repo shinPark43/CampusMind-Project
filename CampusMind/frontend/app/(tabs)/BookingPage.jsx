@@ -6,7 +6,7 @@ import { COLORS } from '../components/theme';
 import { Calendar } from 'react-native-calendars';
 import { useRouter } from 'expo-router';
 import AsyncStorage from "@react-native-async-storage/async-storage";
-
+import { API_URL } from "@env";
 const COURTS = [
   { name: 'Badminton', icon: 'https://img.icons8.com/color/48/000000/badminton.png' },
   { name: 'Basketball', icon: 'https://img.icons8.com/color/48/000000/basketball.png' },
@@ -98,7 +98,7 @@ const BookingPage = () => {
   const [bookingDetails, setBookingDetails] = useState(null);
 
   // ✅ Booking Confirmation
-const API_URL = 'http://10.80.72.125:3000/reservations/createReservation'; // 🛠️ 실제 IP로 변경해야 함!
+  const CREATE_RESERVATION_URL = `${API_URL}/reservations/createReservation`;// 🛠️ 실제 IP로 변경해야 함!
 const router = useRouter();
 
 const handleBooking = async () => {
