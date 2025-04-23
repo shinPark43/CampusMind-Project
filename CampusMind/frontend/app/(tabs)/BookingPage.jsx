@@ -7,65 +7,64 @@ import { Calendar } from 'react-native-calendars';
 import { useRouter } from 'expo-router';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from '@expo/vector-icons';
-import moment from 'moment';
+import moment from 'moment-timezone';
 
 const SPORTS = [
   { name: 'Badminton', icon: 'https://img.icons8.com/color/48/000000/badminton.png' },
   { name: 'Basketball', icon: 'https://img.icons8.com/color/48/000000/basketball.png' },
   { name: 'Table Tennis', icon: 'https://img.icons8.com/color/48/000000/table-tennis.png' },
-  { name: 'Pickleball', icon: 'https://img.icons8.com/color/48/000000/pickle-ball.png' },
+  { name: 'Pickleball', icon: 'https://img.icons8.com/color/48/000000/tennis.png' },
 ];
 
 // Generate 30-Minute Time Slots based on day of the week
 const generateTimeSlots = (dateString) => {
-  console.log('Generating time slots for date:', dateString);
+  console.log('[generateTimeSlots] Generating slots for date:', dateString);
   
   if (!dateString) {
-    console.log('No date string provided, returning empty array');
     return [];
   }
-  
-  const date = new Date(dateString);
-  const dayOfWeek = date.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
-  console.log('Day of week:', dayOfWeek);
+
+  const centralTimeZone = 'America/Chicago';
+  // Ensure the selected date is parsed correctly at the start of the day in CT
+  const selectedDate = moment.tz(dateString, 'YYYY-MM-DD', centralTimeZone).startOf('day'); 
+  const now = moment.tz(centralTimeZone); // Current time in CT
+
+  const dayOfWeek = selectedDate.day();
 
   let start, end;
-
-  if (dayOfWeek >= 1 && dayOfWeek <= 4) { // Monday to Thursday
-    start = '13:00'; // 1 PM
-    end = '23:00';   // 11 PM
-  } else if (dayOfWeek === 5) { // Friday
-    start = '13:00'; // 1 PM
-    end = '20:00';   // 8 PM
-  } else { // Saturday and Sunday
-    start = '12:00'; // 12 PM
-    end = '20:00';   // 8 PM
-  }
+  if (dayOfWeek >= 1 && dayOfWeek <= 4) { start = '13:00'; end = '23:00'; }
+  else if (dayOfWeek === 5) { start = '13:00'; end = '20:00'; }
+  else { start = '12:00'; end = '20:00'; }
   
-  console.log('Time range:', start, 'to', end);
-
   const slots = [];
-  let [hour, minute] = start.split(':').map(Number);
-  const [endHour, endMinute] = end.split(':').map(Number);
+  let currentSlotMoment = moment(start, 'HH:mm'); // Start time as moment object
+  const endTimeMoment = moment(end, 'HH:mm'); // End time as moment object
 
-  // Convert end time to minutes for easier comparison
-  const endTimeInMinutes = endHour * 60 + endMinute;
+  // Check if the selected date is today
+  const isToday = selectedDate.isSame(now, 'day');
   
-  // Generate 30-minute slots
-  while (hour * 60 + minute < endTimeInMinutes) {
-    const currentTime = `${hour}:${String(minute).padStart(2, '0')}`;
-    const formattedSlot = formatTimeToAMPM(currentTime);
-    slots.push(formattedSlot);
+  // Generate slots
+  while (currentSlotMoment.isBefore(endTimeMoment)) {
+    let shouldAddSlot = true; 
+
+    if (isToday) {
+      // Create a full datetime moment for the current slot *on today's date* in CT
+      const slotDateTime = moment.tz(dateString + ' ' + currentSlotMoment.format('HH:mm'), 'YYYY-MM-DD HH:mm', centralTimeZone);
+      
+      // If the slot's start time is before the current time, skip it
+      if (slotDateTime.isBefore(now)) {
+        shouldAddSlot = false;
+      }
+    }
+
+    if (shouldAddSlot) {
+      slots.push(currentSlotMoment.format('h:mm A'));
+    }
     
     // Move to the next 30-minute slot
-    minute += 30;
-    if (minute === 60) {
-      minute = 0;
-      hour++;
-    }
+    currentSlotMoment.add(30, 'minutes');
   }
   
-  console.log('Generated slots:', slots);
   return slots;
 };
 
@@ -206,14 +205,47 @@ const BookingPage = () => {
   };
 
   const handleDateSelect = (date) => {
-    console.log('Date selected:', date);
-    if (date && date.dateString) {
-      setSelectedDate(date.dateString);
+    if (!date || !date.dateString) {
+      console.error('Invalid date object received from calendar:', date);
+      Alert.alert('Error', 'Invalid date selected');
+      return;
+    }
+
+    const centralTimeZone = 'America/Chicago';
+    const selectedDateStr = date.dateString; // e.g., "2024-07-22"
+
+    try {
+      // Get current date in CT
+      const now = moment.tz(centralTimeZone);
+      const nowDate = now.format('YYYY-MM-DD');
+      
+      // Parse selected date
+      const selectedDate = moment.tz(selectedDateStr, 'YYYY-MM-DD', centralTimeZone);
+      const selectedDateFormatted = selectedDate.format('YYYY-MM-DD');
+      
+      // Compare dates
+      const isPast = selectedDateFormatted < nowDate;
+
+      if (isPast) {
+        Alert.alert(
+          'Invalid Date',
+          'Please select today or a future date.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      // If we get here, the date is valid (today or future)
+      setSelectedDate(selectedDateStr);
       setShowDatePicker(false);
       setCurrentStep(3); // Move to time selection step
-    } else {
-      console.error('Invalid date object:', date);
-      Alert.alert('Error', 'Invalid date selected');
+    } catch (error) {
+      console.error('Error processing date selection:', error);
+      Alert.alert(
+        'Error',
+        'There was an error processing your date selection. Please try again.',
+        [{ text: 'OK' }]
+      );
     }
   };
 
@@ -508,11 +540,17 @@ const BookingPage = () => {
   const renderDateSelection = () => (
     <View style={styles.stepContent}>
       <Text style={styles.stepTitle}>Select Date</Text>
+      <Text style={styles.stepSubtitle}>
+        {moment().format('YYYY-MM-DD')} (Today) and future dates are available
+      </Text>
       <Calendar
-        onDayPress={handleDateSelect}
-        minDate={new Date().toISOString().split('T')[0]}
+        onDayPress={(day) => {
+          handleDateSelect(day);
+        }}
+        minDate={moment().format('YYYY-MM-DD')}
         markedDates={{
-          [selectedDate]: { selected: true, selectedColor: COLORS.primary }
+          [selectedDate]: { selected: true, selectedColor: COLORS.primary },
+          [moment().format('YYYY-MM-DD')]: { marked: true, dotColor: COLORS.primary }
         }}
         theme={{
           selectedDayBackgroundColor: COLORS.primary,
@@ -532,9 +570,7 @@ const BookingPage = () => {
   );
 
   const renderTimeSelection = () => {
-    console.log('Rendering time selection for date:', selectedDate);
     const timeSlots = generateTimeSlots(selectedDate);
-    console.log('Generated time slots:', timeSlots);
     
     return (
       <View style={styles.stepContent}>
@@ -647,6 +683,14 @@ const BookingPage = () => {
     setCurrentStep(4); // Move to court selection step
   };
 
+  const handleBookingComplete = () => {
+    // Reset the booking state
+    setSelectedSport(null);
+    setSelectedDate(null);
+    setSelectedTimeSlots([]);
+    setCurrentStep(1);
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.contentContainer}>
@@ -689,23 +733,25 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     flex: 1,
-    paddingBottom: 80, // Add padding to prevent overlap with tabs
+    paddingBottom: 80,
   },
   stepsContainer: {
     flex: 1,
+    width: '100%',
   },
   stepIndicator: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 20,
     paddingVertical: 15,
     backgroundColor: '#f8f9fa',
+    width: '100%',
   },
   stepContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    flex: 1,
+    justifyContent: 'center',
+    marginHorizontal: 5,
   },
   step: {
     width: 30,
@@ -715,29 +761,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  activeStep: {
-    backgroundColor: COLORS.primary,
-  },
-  stepText: {
-    color: '#6c757d',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  activeStepText: {
-    color: '#fff',
-  },
   stepLine: {
-    flex: 1,
+    width: 40,
     height: 2,
     backgroundColor: '#e9ecef',
     marginHorizontal: 5,
   },
-  activeStepLine: {
-    backgroundColor: COLORS.primary,
-  },
   stepContent: {
     flex: 1,
     padding: 20,
+    width: '100%',
   },
   stepTitle: {
     fontSize: 24,
@@ -754,11 +787,12 @@ const styles = StyleSheet.create({
   sportGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    justifyContent: 'space-around',
     paddingHorizontal: 10,
+    width: '100%',
   },
   sportCard: {
-    width: '48%',
+    width: '45%',
     aspectRatio: 1,
     backgroundColor: '#fff',
     borderRadius: 16,
@@ -814,40 +848,42 @@ const styles = StyleSheet.create({
   },
   courtCard: {
     backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 15,
-    marginBottom: 10,
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 8,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowRadius: 2,
+    elevation: 2,
+    width: '100%',
   },
   courtInfo: {
     flex: 1,
   },
   courtName: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
     color: '#212529',
-    marginBottom: 5,
+    marginBottom: 2,
   },
   courtStatus: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#6c757d',
   },
   sharedBadge: {
     backgroundColor: COLORS.primary,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 15,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginLeft: 8,
   },
   sharedText: {
     color: '#fff',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
   },
   timeSlot: {
@@ -856,6 +892,7 @@ const styles = StyleSheet.create({
     padding: 15,
     marginBottom: 10,
     alignItems: 'center',
+    width: '100%',
   },
   selectedTimeSlot: {
     backgroundColor: COLORS.primary,
@@ -878,6 +915,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+    width: '100%',
   },
   summaryRow: {
     flexDirection: 'row',
@@ -899,6 +937,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
     paddingHorizontal: 10,
     paddingBottom: 20,
+    width: '100%',
   },
   navButton: {
     flex: 1,

@@ -36,7 +36,7 @@ const SignUpScreen = () => {
       Alert.alert('Error', 'CID must be exactly 8 digits long and contain only numbers.');
     } else {
       try {
-        const response = await fetch('http://192.168.1.50:3000/users/createUser', {
+        const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/users/createUser`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

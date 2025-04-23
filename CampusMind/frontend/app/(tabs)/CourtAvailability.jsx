@@ -1,18 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, FlatList, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import moment from 'moment';
+import { useFocusEffect } from '@react-navigation/native';
 
 const CourtAvailabilityPage = () => {
     const [courts, setCourts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-
-    useEffect(() => {
-        fetchCourts();
-    }, []);
+    const [currentTime, setCurrentTime] = useState(moment());
+    const [lastUpdated, setLastUpdated] = useState(moment());
 
     const fetchCourts = async () => {
         try {
+            setLoading(true);
             const token = await AsyncStorage.getItem("token");
             if (!token) {
                 setError("No token found!");
@@ -20,18 +21,32 @@ const CourtAvailabilityPage = () => {
                 return;
             }
 
-            const response = await fetch('http://192.168.1.50:3000/courts/getAllCourts', {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                },
-            });
+            const response = await fetch(
+                `${process.env.EXPO_PUBLIC_API_URL}/courts/getAllCourts`,
+                {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                    },
+                }
+            );
 
             const data = await response.json();
             
             if (response.ok) {
-                setCourts(data);
+                // Group courts by sport
+                const groupedData = data.reduce((acc, court) => {
+                    const sportName = court.sport_name || 'Unknown Sport';
+                    if (!acc[sportName]) {
+                        acc[sportName] = [];
+                    }
+                    acc[sportName].push(court);
+                    return acc;
+                }, {});
+                setCourts(groupedData);
+                setLastUpdated(moment());
+                setCurrentTime(moment());
             } else {
                 setError(data.error || 'Failed to fetch courts');
             }
@@ -43,15 +58,12 @@ const CourtAvailabilityPage = () => {
         }
     };
 
-    // Group courts by sport
-    const groupedCourts = courts.reduce((acc, court) => {
-        const sportName = court.sport_name;
-        if (!acc[sportName]) {
-            acc[sportName] = [];
-        }
-        acc[sportName].push(court);
-        return acc;
-    }, {});
+    // Fetch data when the screen comes into focus
+    useFocusEffect(
+        React.useCallback(() => {
+            fetchCourts();
+        }, [])
+    );
 
     const renderCourt = (court) => (
         <TouchableOpacity
@@ -62,6 +74,9 @@ const CourtAvailabilityPage = () => {
             ]}
         >
             <Text style={styles.courtText}>{court.court_name}</Text>
+            <Text style={styles.statusText}>
+                {court.is_available ? 'Available' : 'Not Available'}
+            </Text>
         </TouchableOpacity>
     );
 
@@ -88,7 +103,10 @@ const CourtAvailabilityPage = () => {
     return (
         <ScrollView contentContainerStyle={styles.container}>
             {/* Page Title */}
-            <Text style={styles.pageTitle}>Court Availability</Text>
+            <Text style={styles.pageTitle}>Court Status</Text>
+            <Text style={styles.currentTime}>
+                Last updated: {lastUpdated.format('h:mm A')}
+            </Text>
 
             {/* Legend */}
             <View style={styles.legendContainer}>
@@ -98,12 +116,12 @@ const CourtAvailabilityPage = () => {
                 </View>
                 <View style={styles.legendItem}>
                     <View style={[styles.legendColor, styles.reserved]} />
-                    <Text style={styles.legendText}>Reserved</Text>
+                    <Text style={styles.legendText}>Not Available</Text>
                 </View>
             </View>
 
             {/* Render courts grouped by sport */}
-            {Object.entries(groupedCourts).map(([sportName, sportCourts]) => (
+            {Object.entries(courts).map(([sportName, sportCourts]) => (
                 <View key={sportName}>
                     <Text style={styles.sectionTitle}>{sportName} Courts</Text>
                     <View style={styles.grid}>
@@ -120,7 +138,7 @@ const styles = StyleSheet.create({
         flexGrow: 1,
         padding: 20,
         backgroundColor: '#1B263B',
-        paddingBottom: 80, // Prevent overlap with the tab bar
+        paddingBottom: 80,
     },
     loadingContainer: {
         flex: 1,
@@ -163,8 +181,14 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         color: '#FFF',
         textAlign: 'center',
-        marginTop: '10%', // Add margin to the top
-        marginBottom: 20, // Add spacing below the title
+        marginTop: '10%',
+        marginBottom: 10,
+    },
+    currentTime: {
+        fontSize: 16,
+        color: '#FFF',
+        textAlign: 'center',
+        marginBottom: 20,
     },
     legendContainer: {
         flexDirection: 'row',
@@ -199,26 +223,30 @@ const styles = StyleSheet.create({
         marginBottom: 20,
     },
     court: {
-        width: '48%', // Two columns
-        height: 100,
+        width: '48%',
+        height: 120,
         borderRadius: 10,
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 10,
+        padding: 10,
     },
     reserved: {
-        backgroundColor: '#A0AEC0', // Cool gray
+        backgroundColor: '#A0AEC0',
     },
     available: {
-        backgroundColor: '#68D391', // Cool green
+        backgroundColor: '#68D391',
     },
     courtText: {
         fontSize: 16,
         fontWeight: 'bold',
         color: '#FFF',
+        marginBottom: 5,
     },
-    tableTennisContainer: {
-        marginBottom: 20,
+    statusText: {
+        fontSize: 14,
+        color: '#FFF',
+        textAlign: 'center',
     },
 });
 

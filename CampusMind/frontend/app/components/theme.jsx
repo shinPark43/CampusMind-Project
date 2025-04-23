@@ -7,5 +7,7 @@ export const COLORS = {
     button: '#778DA9',          // Button color
     indicatorActive: '#B0C4E0', // Active indicator color
     indicatorInactive: '#778DA9', // Inactive indicator color
-  };
+};
+
+export default COLORS;
   

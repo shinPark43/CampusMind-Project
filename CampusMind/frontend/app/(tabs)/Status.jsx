@@ -9,6 +9,7 @@ import {
   Alert,
   ActivityIndicator,
   Modal,
+  ScrollView,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
@@ -18,41 +19,147 @@ import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { COURTS } from './BookingPage'; // your courts array
 import { useFocusEffect } from '@react-navigation/native';
 import moment from 'moment';
-
-const API_URL = 'http://192.168.1.50:3000/reservations';
+import Ionicons from '@expo/vector-icons/Ionicons';
 
 const StatusPage = () => {
   const [reservations, setReservations] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [editingReservation, setEditingReservation] = useState(null);
-
-  const [sportName, setSportName] = useState('');
-  const [date, setDate] = useState('');           // 'YYYY-MM-DD'
-  const [startTime, setStartTime] = useState(''); // Start time
-  const [endTime, setEndTime] = useState(''); // End time
-
-  const [isCalendarVisible, setCalendarVisible] = useState(false);
-  const [isTimePickerVisible, setTimePickerVisible] = useState(false);
 
   const router = useRouter();
+
+  // Check and delete expired reservations
+  const checkAndDeleteExpiredReservations = async (reservationsData) => {
+    if (!reservationsData || !Array.isArray(reservationsData)) {
+      return [];
+    }
+
+    const now = moment();
+    const expiredReservations = [];
+    
+    // Find expired reservations
+    for (const reservation of reservationsData) {
+      const [endTimeStr] = reservation.time.split(' - ').slice(-1);
+      const endDateTime = moment(`${reservation.date} ${endTimeStr}`, 'YYYY-MM-DD h:mm A');
+      
+      // If the reservation has ended, add it to the list to delete
+      if (endDateTime.isBefore(now)) {
+        expiredReservations.push(reservation._id);
+      }
+    }
+    
+    // If there are expired reservations, delete them
+    if (expiredReservations.length > 0) {
+      try {
+        const token = await AsyncStorage.getItem('token');
+        if (!token) throw new Error('Not Authenticated');
+        
+        // Delete each expired reservation
+        for (const id of expiredReservations) {
+          await fetch(`${process.env.EXPO_PUBLIC_API_URL}/reservations/cancelReservation/${id}`, {
+            method: 'DELETE',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+          });
+        }
+        
+        // Filter out expired reservations from the local state
+        setReservations(prev => prev.filter(r => !expiredReservations.includes(r._id)));
+        
+        // Show a message if any reservations were deleted
+        if (expiredReservations.length > 0) {
+          Alert.alert(
+            'Reservations Updated',
+            `${expiredReservations.length} expired reservation(s) have been removed.`
+          );
+        }
+      } catch (err) {
+        console.error('Error deleting expired reservations:', err);
+      }
+    }
+    
+    // Return the filtered reservations (non-expired)
+    return reservationsData.filter(r => !expiredReservations.includes(r._id));
+  };
 
   // Fetch reservations
   const fetchReservations = async () => {
     try {
       setLoading(true);
+      
+      // Check token
       const token = await AsyncStorage.getItem('token');
-      if (!token) throw new Error('Not Authenticated');
-      const resp = await fetch(`${API_URL}/getUserReservation`, {
+      if (!token) {
+        console.error('Authentication token not found');
+        throw new Error('Not Authenticated');
+      }
+      
+      console.log('Fetching reservations from:', `${process.env.EXPO_PUBLIC_API_URL}/reservations/getUserReservation`);
+      
+      const resp = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/reservations/getUserReservation`, {
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
       });
+      
+      // Log response status
+      console.log('Response status:', resp.status);
+      
       const data = await resp.json();
+      
+      // Log response data structure
+      console.log('Received data type:', typeof data);
+      console.log('Is data an array:', Array.isArray(data));
+      if (Array.isArray(data)) {
+        console.log('Number of reservations:', data.length);
+        
+        // Check for missing fields in the data
+        const hasIssues = data.some(item => !item.sportName || !item.courtName || !item.date || !item.time);
+        if (hasIssues) {
+          console.warn('Some reservations have missing fields:', data.filter(item => !item.sportName || !item.courtName || !item.date || !item.time));
+        }
+      }
+      
       if (!resp.ok) throw new Error(data.error || 'Fetch failed');
-      setReservations(data);
+      
+      // Validate data is an array before processing
+      if (!Array.isArray(data)) {
+        console.error('Expected array but got:', data);
+        throw new Error('Invalid response format');
+      }
+      
+      // Check and delete expired reservations
+      const activeReservations = await checkAndDeleteExpiredReservations(data);
+      
+      // Get current date and time
+      const now = moment();
+      
+      // Sort reservations by date and time (closest to current date and time first)
+      const sortedData = activeReservations.sort((a, b) => {
+        try {
+          // Create moment objects for the full date-time
+          const aDateTime = moment(`${a.date} ${a.time.split(' - ')[0]}`, 'YYYY-MM-DD h:mm A');
+          const bDateTime = moment(`${b.date} ${b.time.split(' - ')[0]}`, 'YYYY-MM-DD h:mm A');
+          
+          // Calculate the absolute difference in minutes from now
+          const diffA = Math.abs(aDateTime.diff(now, 'minutes'));
+          const diffB = Math.abs(bDateTime.diff(now, 'minutes'));
+          
+          // Sort by the smallest difference (closest to now)
+          return diffA - diffB;
+        } catch (err) {
+          console.error('Error sorting reservation:', err);
+          return 0; // Keep original order if error occurs
+        }
+      });
+      
+      setReservations(sortedData);
     } catch (err) {
-      Alert.alert('Error', err.message);
+      console.error('Error fetching reservations:', err);
+      Alert.alert('Error fetching reservations', String(err));
+      setReservations([]); // Set empty array on error
     } finally {
       setLoading(false);
     }
@@ -65,55 +172,25 @@ const StatusPage = () => {
     }, [])
   );
 
-  // Modify
-  const handleModifyReservation = async () => {
-    try {
-      const token = await AsyncStorage.getItem('token');
-      if (!token) throw new Error('Please log in');
-
-      if (!startTime || !endTime) {
-        Alert.alert('Error', 'Please select both start and end times.');
-        return;
+  // Set up a timer to periodically check for expired reservations
+  useEffect(() => {
+    // Check every minute for expired reservations
+    const interval = setInterval(() => {
+      if (reservations && reservations.length > 0) {
+        checkAndDeleteExpiredReservations(reservations);
       }
-
-      const formattedTime = `${startTime} - ${endTime}`;
-
-      const resp = await fetch(
-        `${API_URL}/modifyReservation/${editingReservation._id}`,
-        {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ sportName, date, time: formattedTime }),
-        }
-      );
-      if (!resp.ok) {
-        const err = await resp.json();
-        throw new Error(err.error || 'Update failed');
-      }
-      // update local list
-      setReservations((prev) =>
-        prev.map((r) =>
-          r._id === editingReservation._id
-            ? { ...r, sportName, date, time: formattedTime }
-            : r
-        )
-      );
-      setEditingReservation(null);
-      Alert.alert('Success', 'Reservation updated.');
-    } catch (err) {
-      Alert.alert('Error', err.message);
-    }
-  };
+    }, 60000); // 60000 ms = 1 minute
+    
+    // Clean up the interval when the component unmounts
+    return () => clearInterval(interval);
+  }, [reservations]);
 
   // Cancel
   const handleCancelReservation = async (id) => {
     try {
       const token = await AsyncStorage.getItem('token');
       if (!token) throw new Error('Please log in');
-      const resp = await fetch(`${API_URL}/cancelReservation/${id}`, {
+      const resp = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/reservations/cancelReservation/${id}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -130,29 +207,6 @@ const StatusPage = () => {
       Alert.alert('Error', err.message);
     }
   };
-
-  // Calendar modal controls
-  const openCalendar = () => setCalendarVisible(true);
-  const closeCalendar = () => setCalendarVisible(false);
-
-  // Time picker controls
-  const openStartTimePicker = () => setTimePickerVisible('start');
-  const openEndTimePicker = () => setTimePickerVisible('end');
-
-  const closeTimePicker = () => {
-    setTimePickerVisible(false); // Close the time picker modal
-  };
-
-  const handleTimeConfirm = (dt) => {
-    const formattedTime = moment(dt).format('h:mm A');
-    if (isTimePickerVisible === 'start') {
-      setStartTime(formattedTime);
-    } else if (isTimePickerVisible === 'end') {
-      setEndTime(formattedTime);
-    }
-    closeTimePicker();
-  };
-
 
   return (
     <View style={styles.container}>
@@ -172,26 +226,15 @@ const StatusPage = () => {
                 <Text style={styles.label}>Sport:</Text> {item.sportName}
               </Text>
               <Text style={styles.text}>
+                <Text style={styles.label}>Court:</Text> {item.courtName}
+              </Text>
+              <Text style={styles.text}>
                 <Text style={styles.label}>Date:</Text> {item.date}
               </Text>
               <Text style={styles.text}>
                 <Text style={styles.label}>Time:</Text> {item.time}
               </Text>
               <View style={styles.actions}>
-                <TouchableOpacity
-                  style={styles.modifyBtn}
-                  onPress={() => {
-                    setEditingReservation(item);
-                    setSportName(item.sportName);
-                    setDate(item.date);
-                    
-                    const [start, end] = item.time.split(' - ');
-                    setStartTime(start.trim());
-                    setEndTime(end.trim());
-                  }}
-                >
-                  <Text style={styles.btnText}>Modify</Text>
-                </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.cancelBtn}
                   onPress={() =>
@@ -217,127 +260,17 @@ const StatusPage = () => {
         />
       )}
 
-{editingReservation && (
-  <Modal
-    transparent={false} // Full-screen modal
-    animationType="slide"
-    visible={!!editingReservation}
-    onRequestClose={() => setEditingReservation(null)} // Close modal on back press
-  >
-    <View style={styles.fullPageContainer}>
-      <Text style={styles.title}>Edit Reservation</Text>
-
-      {/* Sport */}
-      <Text style={styles.fieldLabel}>Sport</Text>
-      <View style={styles.pickerContainer}>
-        <Picker
-          selectedValue={sportName}
-          onValueChange={(v) => setSportName(v)}
-          style={styles.picker}
-          itemStyle={styles.pickerItem}
-        >
-          {COURTS.map((c) => (
-            <Picker.Item key={c.name} label={c.name} value={c.name} />
-          ))}
-        </Picker>
-      </View>
-
-      {/* Date */}
-      <Text style={styles.fieldLabel}>Date</Text>
-      <TouchableOpacity
-        style={styles.pickerContainer}
-        onPress={openCalendar}
-      >
-        <Text style={{ padding: 10 }}>{date || 'Select Date'}</Text>
-      </TouchableOpacity>
-
-      {/* Calendar Modal */}
-      <Modal
-        transparent
-        visible={isCalendarVisible}
-        animationType="slide"
-        onRequestClose={closeCalendar}
-      >
-        <View style={styles.modalBg}>
-          <View style={styles.modalBox}>
-            <Calendar
-              onDayPress={(d) => {
-                setDate(d.dateString);
-                closeCalendar();
-              }}
-              minDate={new Date().toISOString().split('T')[0]}
-            />
-            <TouchableOpacity
-              style={[styles.cancelBtn, { marginTop: 10 }]}
-              onPress={closeCalendar}
-            >
-              <Text style={styles.btnText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Time */}
-      <Text style={styles.fieldLabel}>Time</Text>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-        <TouchableOpacity
-          style={[styles.pickerContainer, { flex: 1, marginRight: 5 }]}
-          onPress={openStartTimePicker}
-        >
-          <Text style={{ padding: 10 }}>{startTime || 'Start Time'}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.pickerContainer, { flex: 1, marginRight: 5 }]}
-          onPress={openEndTimePicker}
-        >
-          <Text style={{ padding: 10 }}>{endTime || 'End Time'}</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Time Picker Modal */}
-      <DateTimePickerModal
-        isVisible={isTimePickerVisible !== false}
-        mode="time"
-        date={new Date()}
-        onConfirm={handleTimeConfirm}
-        onCancel={closeTimePicker}
-      />
-
-      {/* Save and Cancel Buttons */}
-      <TouchableOpacity
-        style={[styles.modifyBtn, { marginTop: 10, marginBottom: 5 }]}
-        onPress={handleModifyReservation}
-      >
-        <Text style={styles.btnText}>Save Changes</Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={styles.cancelBtn}
-        onPress={() => setEditingReservation(null)}
-      >
-        <Text style={styles.btnText}>Cancel</Text>
-      </TouchableOpacity>
-    </View>
-  </Modal>
-)}
-
-      {/* <TouchableOpacity
-        style={styles.createBtn}
-        onPress={() => router.push('/BookingPage')}
-      >
-        <Text style={styles.btnText}>Create Reservation</Text>
-      </TouchableOpacity> */}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  fullPageContainer: {
-    flex: 1,
+  container: { 
+    flex: 1, 
+    padding: 20, 
     backgroundColor: '#1B263B',
-    padding: 20,
-    justifyContent: 'flex-start',
+    width: '100%',
   },
-  container: { flex: 1, padding: 20, backgroundColor: '#1B263B' },
   title: {
     fontSize: 28,
     color: '#FFF',
@@ -345,51 +278,46 @@ const styles = StyleSheet.create({
     paddingTop: '10%',
     marginBottom: 20,
     textAlign: 'center',
+    width: '100%',
   },
-  noReservations: { color: '#FFF', textAlign: 'center', marginTop: 20 },
+  noReservations: { 
+    color: '#FFF', 
+    textAlign: 'center', 
+    marginTop: 20,
+    width: '100%',
+  },
   card: {
     backgroundColor: '#FFF',
     borderRadius: 10,
     padding: 15,
     marginBottom: 15,
     elevation: 2,
+    width: '100%',
   },
-  text: { fontSize: 16, marginBottom: 5, color: '#1B263B' },
-  label: { fontWeight: 'bold' },
-  actions: { flexDirection: 'row', justifyContent: 'space-between' },
-  modifyBtn: {
-    backgroundColor: '#778FFF',
-    padding: 10,
-    borderRadius: 8,
+  text: { 
+    fontSize: 16, 
+    marginBottom: 5, 
+    color: '#1B263B',
+    width: '100%',
+  },
+  label: { 
+    fontWeight: 'bold' 
+  },
+  actions: { 
+    flexDirection: 'row', 
+    justifyContent: 'flex-end',
+    width: '100%',
   },
   cancelBtn: {
     backgroundColor: '#F44336',
     padding: 10,
     borderRadius: 8,
+    minWidth: 100,
   },
-  btnText: { color: '#FFF', fontWeight: 'bold', textAlign: 'center' },
-  editForm: {
-    backgroundColor: '#FFF',
-    borderRadius: 10,
-    padding: 15,
-    paddingBottom: '10%',
-  },
-  fieldLabel: {
-    color: '#FFFFFF',
-    fontWeight: 'bold',
-    marginBottom: 5,
-  },
-  pickerContainer: {
-    backgroundColor: '#EFEFEF',
-    borderRadius: 8,
-    marginBottom: 15,
-  },
-  picker: {
-    color: '#000',
-    backgroundColor: '#FFF',
-  },
-  pickerItem: {
-    color: '#000',
+  btnText: { 
+    color: '#FFF', 
+    fontWeight: 'bold', 
+    textAlign: 'center' 
   },
   createBtn: {
     backgroundColor: '#778DA9',
@@ -397,18 +325,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
     marginTop: 20,
-  },
-  modalBg: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalBox: {
-    backgroundColor: '#FFF',
-    borderRadius: 10,
-    padding: 20,
-    width: '90%',
+    width: '100%',
   },
 });
 
