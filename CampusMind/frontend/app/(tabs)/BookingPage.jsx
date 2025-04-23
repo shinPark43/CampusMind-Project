@@ -125,7 +125,7 @@ const handleBooking = async () => {
 
     console.log('Sending reservation data:', reservationData);
 
-    const response = await fetch(API_URL, {
+    const response = await fetch(CREATE_RESERVATION_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
