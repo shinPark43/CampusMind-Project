@@ -7,6 +7,7 @@ import { logger, auth } from './middleware/middleware.js'; // Import the logger 
 import reservationRouter from './routers/reservation.js'; // Import the reservation router
 import forgotPasswordRouter from './routers/forgotpassword.js'; //import the change password router
 import cors from 'cors';
+import sportsRouter from './routers/sports.js'; // correct the path if needed
 
 // Load environment variables from .env file
 dotenv.config({ path: `.env.${process.env.NODE_ENV}` });
@@ -25,6 +26,7 @@ app.use(logger); // Use the logger middleware
 app.use("/users", userRouter); // Use the user router with the /users prefix
 app.use(sportEquipmentRouter); // Use the sport equipment router
 app.use("/reservations", reservationRouter); // Use the reservation router with the /reservations prefix
+app.use('/api', sportsRouter); 
 
 app.listen(port, () => {
     console.log(`Server is up on port ${port}`);

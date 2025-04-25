@@ -7,7 +7,99 @@ import { auth } from '../middleware/middleware.js'; // Ensure the auth middlewar
 import mongoose from 'mongoose';
 import moment from 'moment-timezone';
 
+
 const router = Router();
+router.post('/createWalkIn', async (req, res) => {
+    try {
+        const { sportName, date, time } = req.body;
+
+        const walkInUserId = '680abac7fcd6d4b8e3e805de'; // 🔒 Walk-in user ID
+        const sport = await Sport.findOne({ sport_name: sportName });
+
+        if (!sport) return res.status(404).json({ error: 'Sport not found.' });
+        if (!sportName || !date || !time) return res.status(400).json({ error: 'Missing required fields.' });
+
+        const timeRegex = /^(\d{1,2}:\d{2}\s?[APMapm]{2})\s*-\s*(\d{1,2}:\d{2}\s?[APMapm]{2})$/;
+        const match = time.match(timeRegex);
+        if (!match) return res.status(400).json({ error: 'Invalid time format.' });
+
+        const [, startTime, endTime] = match;
+        const startTime24 = moment(startTime, ['h:mm A']).format('HH:mm');
+        const endTime24 = moment(endTime, ['h:mm A']).format('HH:mm');
+
+        // 🛑 Conflict check
+        const conflict = await Reservation.findOne({
+            sport_id: sport._id,
+            date,
+            $or: [
+                { start_time: { $lt: endTime24 }, end_time: { $gt: startTime24 } }
+            ]
+        });
+
+        if (conflict) return res.status(400).json({ error: "Oppsie, someone else is playing at that time, try picking something else" });
+
+        const reservation = new Reservation({
+            user_id: walkInUserId,
+            sport_id: sport._id,
+            date,
+            start_time: startTime24,
+            end_time: endTime24
+        });
+
+        await reservation.save();
+        res.status(201).json({ message: 'Walk-in reservation created!' });
+
+    } catch (err) {
+        console.error('Walk-in error:', err.message);
+        res.status(500).json({ error: 'Something went wrong while creating walk-in reservation.' });
+    }
+});
+
+router.get('/by-date', async (req, res) => {
+    try {
+      const { date } = req.query;
+  
+      const reservations = await Reservation.find({ date })
+        .populate('sport_id')
+        .populate('user_id');
+  
+      const formatted = reservations.map((res) => ({
+        _id: res._id,
+        sportName: res.sport_id?.sport_name || "Unknown",
+        time: `${moment(res.start_time, 'HH:mm').format('h:mm A')} - ${moment(res.end_time, 'HH:mm').format('h:mm A')}`,
+        userName: res.user_id?.first_name ? `${res.user_id.first_name} ${res.user_id.last_name}` : "Walk-in reservation"
+      }));
+  
+      res.status(200).json(formatted);
+    } catch (err) {
+      console.error("Error fetching reservations:", err.message);
+      res.status(500).json({ error: "Failed to fetch reservations." });
+    }
+  });
+
+  router.delete('/cancelReservation/:reservationId', async (req, res) => {
+    const { reservationId } = req.params;
+  
+    console.log(`Deleting reservation with ID: ${reservationId}`);
+  
+    try {
+      if (!mongoose.Types.ObjectId.isValid(reservationId)) {
+        return res.status(400).json({ error: 'The provided reservation ID is invalid.' });
+      }
+  
+      const reservation = await Reservation.findById(reservationId);
+      if (!reservation) {
+        return res.status(404).json({ error: 'Reservation not found' });
+      }
+  
+      await reservation.deleteOne();
+      console.log(`Reservation ${reservationId} deleted successfully`);
+      res.status(200).json({ message: 'Reservation deleted successfully' });
+    } catch (error) {
+      console.error('Error deleting reservation:', error.message);
+      res.status(500).json({ error: 'An error occurred while deleting the reservation' });
+    }
+  });
 router.use(auth);
 
 router.post('/createReservation', auth, async (req, res) => {
@@ -148,40 +240,6 @@ router.get('/getUserReservation', auth, async (req, res) => {
     }
 });
 
-router.delete('/cancelReservation/:reservationId', auth, async (req, res) => {
-    const { reservationId } = req.params; // Extract reservationId from the URL
-    const userId = req.user._id; // Get the authenticated user's ID from the token
-
-    console.log(`User ${userId} is attempting to delete reservation ${reservationId}`);
-
-    try {
-        // Validate the reservationId
-        if (!mongoose.Types.ObjectId.isValid(reservationId)) {
-            return res.status(400).json({ error: 'The provided reservation ID is invalid.' });
-        }
-
-        // Find the reservation by ID
-        const reservation = await Reservation.findById(reservationId);
-
-        if (!reservation) {
-            return res.status(404).json({ error: 'Reservation not found' });
-        }
-
-        // Check if the user is authorized to delete this reservation
-        if (reservation.user_id.toString() !== userId.toString()) {
-            return res.status(403).json({ error: 'You are not authorized to delete this reservation' });
-        }
-
-        // Delete the reservation
-        await reservation.deleteOne();
-
-        console.log(`Reservation ${reservationId} deleted successfully`);
-        res.status(200).json({ message: 'Reservation deleted successfully' });
-    } catch (error) {
-        console.error('Error deleting reservation:', error.message);
-        res.status(500).json({ error: 'An error occurred while deleting the reservation' });
-    }
-});
 
 router.put('/modifyReservation/:reservationId', auth, async (req, res) => {
     const { reservationId } = req.params;
@@ -262,5 +320,6 @@ router.put('/modifyReservation/:reservationId', auth, async (req, res) => {
         res.status(500).json({ error: 'An error occurred while updating the reservation' });
     }
 });
+
 
 export default router;
