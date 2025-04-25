@@ -20,7 +20,7 @@ const connectDB = async () => {
     try {
         await connect(mongoURI, { 
             dbName: 'CHP', // Database name
-            // dbName: 'test', // Database name
+                        // dbName: 'test', // Database name
             //dbName: 'start_end_time', // Database name
                 // useNewUrlParser: true,
                 // useCreateIndex: true, 
