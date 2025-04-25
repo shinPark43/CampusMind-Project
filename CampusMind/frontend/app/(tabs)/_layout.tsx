@@ -45,7 +45,8 @@ export default function TabLayout() {
           route.name === 'BookingPage' ||
           route.name === 'Status' ||
           route.name === 'ProfilePage' ||
-          route.name === 'CourtAvailability'
+          route.name === 'CourtAvailability' ||
+          route.name === 'chatbot'
             ? HapticTab
             : () => null,
       })}
@@ -76,6 +77,13 @@ export default function TabLayout() {
         options={{
           title: 'Court',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="basketball" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="chatbot"
+        options={{
+          title: 'AI Chat',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="message.fill" color={color} />,
         }}
       />
       <Tabs.Screen

@@ -7,6 +7,7 @@ import { logger, auth } from './middleware/middleware.js'; // Import the logger 
 import reservationRouter from './routers/reservation.js'; // Import the reservation router
 import forgotPasswordRouter from './routers/forgotpassword.js'; //import the change password router
 import courtRouter from './routers/court.js'; // Import the court router
+import chatRouter from './routes/chat.js'; // Import the chat router
 
 
 // Load environment variables from .env file
@@ -26,6 +27,7 @@ app.use("/users", userRouter); // Use the user router with the /users prefix
 app.use(sportEquipmentRouter); // Use the sport equipment router
 app.use("/reservations", reservationRouter); // Use the reservation router with the /reservations prefix
 app.use("/courts", courtRouter); // Use the court router with the /courts prefix
+app.use("/api/chat", chatRouter); // Use the chat router with the /api/chat prefix
 
 app.listen(port, () => {
     console.log(`Server is up on port ${port}`);
