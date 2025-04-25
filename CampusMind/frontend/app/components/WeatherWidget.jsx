@@ -1,13 +1,26 @@
 // WeatherSidget.jsx
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Dimensions, ActivityIndicator, Image, useWindowDimensions, TouchableOpacity, Modal, Pressable, Switch } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, ActivityIndicator, Image, useWindowDimensions, TouchableOpacity, Modal, Pressable, Switch, ImageBackground } from 'react-native';
 import * as Location from 'expo-location';
 import axios from 'axios';
 import { COLORS } from './theme';
+import weatherImage from '../../assets/images/weather.jpeg'; // Import the weather image
 
 const API_KEY = '988a61e588953a7894d47bc8c884c314'; // Replace with your actual API key
 
 const { width, height } = Dimensions.get('window');
+
+const weatherBackgrounds = {
+  'clear sky': require('../../assets/images/clear_sky.jpeg'),
+  'few clouds': require('../../assets/images/few_clouds.jpeg'),
+  'scattered clouds': require('../../assets/images/scattered_clouds.jpeg'),
+  'broken clouds': require('../../assets/images/broken_clouds.jpeg'),
+  'shower rain': require('../../assets/images/shower_rain.jpeg'),
+  'rain': require('../../assets/images/rain.jpeg'),
+  'thunderstorm': require('../../assets/images/thunderstorm.jpeg'),
+  'snow': require('../../assets/images/snow.jpeg'),
+  'mist': require('../../assets/images/mist.jpeg'),
+};
 
 const WeatherWidget = () => {
   const { width } = useWindowDimensions();
@@ -74,13 +87,13 @@ const WeatherWidget = () => {
     <>
       {/* ✅ Mini Widget */}
       <TouchableOpacity onPress={() => setIsModalVisible(true)} style={styles.miniContainerWrapper}>
-        <View style={[styles.miniContainer, { width: width * 0.25, height: height * 0.1 }]}>
-          <Image
-            source={{ uri: `https://openweathermap.org/img/wn/${icon}@2x.png` }}
-            style={styles.miniIcon}
-          />
-          <Text style={styles.miniTemp}>{Math.round(temp)}°{isFahrenheit ? 'F' : 'C'}</Text>
-        </View>
+        <ImageBackground
+          source={weatherBackgrounds[description] || weatherImage} // Dynamically set the background image
+          style={[styles.miniContainer, { width: width, height: height * 0.17 }]}
+        >
+          <Text style={styles.miniHeader}>Temperature: {Math.round(temp)}°{isFahrenheit ? 'F' : 'C'}</Text>
+          <Text style={styles.miniHeaderText}>Tap to explore today's weather forecast!</Text>
+        </ImageBackground>
       </TouchableOpacity>
 
       {/* ✅ Modal for Full Weather Info */}
@@ -115,8 +128,8 @@ const WeatherWidget = () => {
               <Switch
                 value={isFahrenheit}
                 onValueChange={setIsFahrenheit}
-                trackColor={{ false: '#ccc', true: COLORS.primary }} 
-                thumbColor={isFahrenheit ? COLORS.secondary : '#f4f3f4'} 
+                trackColor={{ false: '#ccc', true: COLORS.indicatorActive }} 
+                thumbColor={isFahrenheit ? COLORS.indicatorInactive : '#f4f3f4'} 
                 ios_backgroundColor="#ccc"
                 />
 
@@ -132,21 +145,48 @@ const WeatherWidget = () => {
 const styles = StyleSheet.create({
   // ✅ Mini Widget Style
   miniContainerWrapper: {
-    alignSelf: 'flex-start',
-    marginLeft: width * 0.05,
-    marginTop: height * 0.01,
+    alignSelf: 'center', // Center the widget horizontally
+    marginTop: 20, // Add spacing from the top
   },
   miniContainer: {
-    backgroundColor: COLORS.secondary,
-    borderRadius: 10,
+    backgroundColor: COLORS.secondary, // Match the background color
     alignItems: 'center',
-    flexDirection: 'row',
     justifyContent: 'center',
+    padding: 20, // Add padding for better spacing
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 3,
     elevation: 3,
+  },
+  miniHeader: {
+    fontSize: width * 0.05,
+    fontWeight: 'bold',
+    alignItems: 'left',
+    color: COLORS.textPrimary,
+    top: -30,
+    left: -25,
+    textShadowColor: 'rgba(0, 0, 0, 0.7)', // Add a shadow effect to the text
+    textShadowOffset: { width: 1, height: 1 }, // Shadow offset
+    textShadowRadius: 3, // Shadow radius
+    width: '100%', // Ensures the text takes the full width
+    maxWidth: '90%', // Ensures the text doesn't exceed the card widthe
+    textDecorationThickness: 2, // Thickness of the underline
+  },
+  miniHeaderText: {
+    fontSize: width * 0.04, // Smaller font size for secondary text
+    fontWeight: 'bold', // Normal weight for secondary text
+    alignItems: 'left',
+    color: COLORS.textSecondary, // Use a secondary color for contrast
+    marginTop: 5, // Add some spacing from the previous element
+    textShadowColor: 'rgba(0, 0, 0, 0.5)', // Optional shadow for better visibility
+    textShadowOffset: { width: 1, height: 1 }, // Shadow offset
+    textShadowRadius: 2, // Shadow blur radius
+    top: -20,
+    left: -25,
+    width: '100%', // Ensures the text takes the full width
+    maxWidth: '90%', // Ensures the text doesn't exceed the card width
+    textDecorationThickness: 2, // Thickness of the underline 
   },
   miniIcon: {
     width: 30,
@@ -161,33 +201,37 @@ const styles = StyleSheet.create({
 
   // Full Widget (Modal) Style
   fullContainer: {
-    backgroundColor: COLORS.secondary,
-    borderRadius: 10,
-    padding: 20,
+    backgroundColor: COLORS.primary, // Match the background color
+    borderRadius: 10, // Add rounded corners
+    padding: 20, // Add padding for spacing
     alignItems: 'center',
+    width: '90%', // Adjust width to fit the screen
   },
   location: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#2f3542',
+    color: COLORS.textPrimary, // Match the text color
+    marginBottom: 10,
   },
   temp: {
     fontSize: 36,
     fontWeight: 'bold',
-    color: '#2f3542',
+    color: COLORS.textPrimary, // Match the text color
   },
   description: {
     fontSize: 16,
     textTransform: 'capitalize',
-    color: '#2f3542',
+    color: COLORS.textPrimary, // Match the text color
     marginBottom: 5,
   },
   details: {
-    marginTop: 5,
+    marginTop: 10,
+    alignItems: 'center', // Center the details text
   },
   detailText: {
     fontSize: 14,
-    color: '#2f3542',
+    color: COLORS.textPrimary, // Match the text color
+    marginBottom: 5,
   },
   fullIcon: {
     width: 60,
@@ -211,8 +255,10 @@ const styles = StyleSheet.create({
   switchLabel: {
     fontSize: 16,
     marginHorizontal: 5,
-    color: '#2f3542',
+    color: COLORS.textPrimary, 
   },
 });
 
 export default WeatherWidget;
+
+
