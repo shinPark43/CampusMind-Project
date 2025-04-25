@@ -15,31 +15,35 @@ export const reservationMiddleware = (schema) => {
 // Authentication middleware
 export const auth = async (req, res, next) => {
     try {
-        // Get the token from the Authorization header
-        const token = req.header('Authorization').replace('Bearer ', '');
-        
-        // Verify the token using the secret key
-        const decoded = jwt.verify(token, process.env.JWT_KEY); // Use JWT_KEY
-        
-        // Find the user by the decoded token and ensure the token is still valid
-        // const user = await User.findOne({ _id: decoded._id, 'tokens.token': token });
-        const user = await User.findOne({ _id: decoded._id });
-        // If no user is found, throw an error
-        if (!user) {
-            throw new Error();
-        }
-
-        // Attach the token and user to the request object
-        
-        req.user = user;
-        
-        // Call the next middleware function in the stack
-        next();
-    } catch (error) {
-        // If an error occurs, respond with a 401 status and an error message
-        res.status(401).send({ error: 'Please authenticate.' });
+      // ✅ Skip auth for known walk-in user ID in backend logic
+      const walkInUserId = '680abac7fcd6d4b8e3e805de';
+  
+      // 🩻 Try to bypass auth if modifying a reservation that belongs to the walk-in user
+  if (req.method === "PUT" && req.path.includes("/modifyReservation")) {
+    const reservationId = req.params?.reservationId;
+    if (reservationId) {
+      const reservation = await Reservation.findById(reservationId);
+      if (reservation && reservation.user_id.toString() === walkInUserId) {
+        console.log("🛑 Skipping auth for walk-in admin mod");
+        return next();
+      }
     }
-};
+  }
+  
+      const token = req.header('Authorization')?.replace('Bearer ', '');
+      if (!token) throw new Error("Missing token");
+  
+      const decoded = jwt.verify(token, process.env.JWT_KEY);
+      const user = await User.findOne({ _id: decoded._id });
+  
+      if (!user) throw new Error();
+  
+      req.user = user;
+      next();
+    } catch (error) {
+      res.status(401).send({ error: 'Please authenticate.' });
+    }
+  };
 
 // Logging middleware
 export const logger = (req, res, next) => {

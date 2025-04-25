@@ -9,8 +9,36 @@ import moment from 'moment-timezone';
 
 
 const router = Router();
+
+router.delete('/cleanup', async (req, res) => {   //so old reservations do not stay in mongodb
+  try {
+    const now = new Date();
+
+    const deleted = await Reservation.deleteMany({
+      $or: [
+        // Reservations before today
+        { date: { $lt: now.toISOString().split('T')[0] } },
+        // Reservations that are today but already finished
+        { 
+          date: now.toISOString().split('T')[0],
+          end_time: { $lt: now.toTimeString().slice(0,5) }
+        }
+      ]
+    });
+
+    res.status(200).json({ message: 'Expired reservations deleted.', deletedCount: deleted.deletedCount });
+  } catch (error) {
+    console.error('Cleanup error:', error.message);
+    res.status(500).json({ error: 'Failed to clean up reservations.' });
+  }
+});
+
+
+
 router.post('/createWalkIn', async (req, res) => {
+    console.log("🛠️ Hit the createwalkin reservation.js route!");
     try {
+
         const { sportName, date, time } = req.body;
 
         const walkInUserId = '680abac7fcd6d4b8e3e805de'; // 🔒 Walk-in user ID
@@ -39,13 +67,13 @@ router.post('/createWalkIn', async (req, res) => {
         if (conflict) return res.status(400).json({ error: "Oppsie, someone else is playing at that time, try picking something else" });
 
         const reservation = new Reservation({
-            user_id: walkInUserId,
-            sport_id: sport._id,
-            date,
-            start_time: startTime24,
-            end_time: endTime24
-        });
-
+          user_id: walkInUserId,
+          sport_id: sport._id,
+          date,
+          start_time: startTime24,
+          end_time: endTime24,
+          userName: req.body.userName || "Walk-in reservation" // ✅ ADD THIS LINE
+      });
         await reservation.save();
         res.status(201).json({ message: 'Walk-in reservation created!' });
 
@@ -56,6 +84,7 @@ router.post('/createWalkIn', async (req, res) => {
 });
 
 router.get('/by-date', async (req, res) => {
+    console.log("🛠️ Hit the bydatereservation.js route!");
     try {
       const { date } = req.query;
   
@@ -63,12 +92,15 @@ router.get('/by-date', async (req, res) => {
         .populate('sport_id')
         .populate('user_id');
   
-      const formatted = reservations.map((res) => ({
-        _id: res._id,
-        sportName: res.sport_id?.sport_name || "Unknown",
-        time: `${moment(res.start_time, 'HH:mm').format('h:mm A')} - ${moment(res.end_time, 'HH:mm').format('h:mm A')}`,
-        userName: res.user_id?.first_name ? `${res.user_id.first_name} ${res.user_id.last_name}` : "Walk-in reservation"
-      }));
+        const formatted = reservations.map((res) => ({
+            _id: res._id,
+            sportName: res.sport_id?.sport_name || "Unknown",
+            time: `${moment(res.start_time, 'HH:mm').format('h:mm A')} - ${moment(res.end_time, 'HH:mm').format('h:mm A')}`,
+            userName: res.user_id?.first_name
+  ? `${res.user_id.first_name} ${res.user_id.last_name}`
+  : res.userName || "Walk-in reservation",
+            isWalkIn: !res.user_id?.first_name, // ✅ ← this must be here
+          }));
   
       res.status(200).json(formatted);
     } catch (err) {
@@ -78,6 +110,7 @@ router.get('/by-date', async (req, res) => {
   });
 
   router.delete('/cancelReservation/:reservationId', async (req, res) => {
+    console.log("🛠️ Hit the cancelreservationreservation.js route!");
     const { reservationId } = req.params;
   
     console.log(`Deleting reservation with ID: ${reservationId}`);
@@ -100,10 +133,89 @@ router.get('/by-date', async (req, res) => {
       res.status(500).json({ error: 'An error occurred while deleting the reservation' });
     }
   });
-router.use(auth);
+  
+  router.put('/modifyReservation/:reservationId', async (req, res, next) => {
+    req.isAdminOverride = req.headers['x-admin-request'] === 'true';
+    if (!req.isAdminOverride) return auth(req, res, next);
+    next();
+  }, async (req, res) => {
+    console.log("🛠️ Hit the modifyReservation route!");
+  
+    const { reservationId } = req.params;
+    const { sportName, date, time } = req.body;
+    const userId = req.user?._id || null;
+  
+    try {
+      if (!sportName || !date || !time) {
+        return res.status(400).json({ error: 'All fields (sportName, date, time) are required.' });
+      }
+  
+      const sport = await Sport.findOne({ sport_name: sportName });
+      if (!sport) {
+        return res.status(404).json({ error: 'Sport not found' });
+      }
+  
+      const reservation = await Reservation.findById(reservationId);
+      if (!reservation) {
+        return res.status(404).json({ error: 'Reservation not found' });
+      }
+  
+      if (!req.isAdminOverride && reservation.user_id.toString() !== userId?.toString()) {
+        return res.status(403).json({ error: 'You are not authorized to modify this reservation.' });
+      }
+  
+      // validation...
+      const match = time.match(/^(\d{1,2}:\d{2}\s?[APMapm]{2})\s*-\s*(\d{1,2}:\d{2}\s?[APMapm]{2})$/);
+      if (!match) {
+        return res.status(400).json({ error: "Invalid time format." });
+      }
+      const [, startTime, endTime] = match;
+      const startTime24 = moment(startTime, ["h:mm A"]).format("HH:mm");
+      const endTime24 = moment(endTime, ["h:mm A"]).format("HH:mm");
+  
+      const conflict = await Reservation.findOne({
+        sport_id: sport._id,
+        date,
+        _id: { $ne: reservationId },
+        $or: [{ start_time: { $lt: endTime24 }, end_time: { $gt: startTime24 } }],
+      });
+  
+      if (conflict) {
+        return res.status(400).json({ error: 'Time conflict with an existing reservation.' });
+      }
+  
+      reservation.sport_id = sport._id;
+      reservation.date = date;
+      reservation.start_time = startTime24;
+      reservation.end_time = endTime24;
+      await reservation.save();
+  
+      res.status(200).json({ message: 'Reservation updated successfully', reservation });
+  
+    } catch (err) {
+      console.error("Update error:", err.message);
+      res.status(500).json({ error: "An error occurred while updating the reservation" });
+    }
+  });
+
+  router.use((req, res, next) => {
+    // Only protect /modifyReservation
+    if (
+        req.path.startsWith("/modifyReservation") ||
+        req.path.startsWith("/cancelReservation")
+      ) {
+        // Bypass auth for Admin walk-ins
+        const isAdminRequest = req.headers["x-admin-request"] === "true";
+        if (!isAdminRequest) {
+          return auth(req, res, next);
+        }
+      }
+  });
 
 router.post('/createReservation', auth, async (req, res) => {
+  console.log("Received create reservation request with body:", req.body);
     try {
+        console.log("🛠️ Hit the createreservation,regularusers,reservation.js route!");
         const { sportName, date, time } = req.body;
         console.log("Received data:", sportName, date, time);
 
@@ -219,6 +331,7 @@ router.post('/createReservation', auth, async (req, res) => {
 });
 
 router.get('/getUserReservation', auth, async (req, res) => {
+    console.log("🛠️ Hit the getreservationreqularuserreseration.js route!");
     try {
         const userId = req.user._id;
 
@@ -241,85 +354,7 @@ router.get('/getUserReservation', auth, async (req, res) => {
 });
 
 
-router.put('/modifyReservation/:reservationId', auth, async (req, res) => {
-    const { reservationId } = req.params;
-    const { sportName, date, time } = req.body;
-    const userId = req.user._id;
 
-    try {
-        // Validate required fields
-        if (!sportName || !date || !time) {
-            return res.status(400).json({ error: 'All fields (sportName, date, time) are required.' });
-        }
-
-        // Verify if the user exists in the database
-        const user = await User.findById(userId);
-        if (!user) {
-            console.log("Unauthorized access attempt: User not found");
-            return res.status(403).json({ error: "Unauthorized access. User not found in the system." });
-        }
-
-        const sport = await Sport.findOne({ sport_name: sportName });
-        if (!sport) {
-            return res.status(404).json({ error: 'Sport not found' });
-        }
-
-        const reservation = await Reservation.findById(reservationId);
-        if (!reservation) {
-            return res.status(404).json({ error: 'Reservation not found' });
-        }
-
-        if (reservation.user_id.toString() !== userId.toString()) {
-            return res.status(403).json({ error: 'You are not authorized to modify this reservation.' });
-        }
-
-        // Additional validation (e.g., date format)
-        if (isNaN(Date.parse(date))) {
-            return res.status(400).json({ error: 'Invalid date format.' });
-        }
-
-        // Parse the time range (e.g., "1:30 PM - 2:30 PM")
-        const timeRegex = /^(\d{1,2}:\d{2}\s?[APMapm]{2})\s*-\s*(\d{1,2}:\d{2}\s?[APMapm]{2})$/;
-        const match = time.match(timeRegex);
-
-        if (!match) {
-            return res.status(400).json({ error: "Invalid time format. Expected format is 'HH:MM AM/PM - HH:MM AM/PM'." });
-        }
-
-        const [_, startTime, endTime] = match;
-
-        // Convert start and end times to 24-hour format (HH:MM)
-        const startTime24 = moment(startTime, ["h:mm A"]).format("HH:mm");
-        const endTime24 = moment(endTime, ["h:mm A"]).format("HH:mm");
-
-        // Check for conflicting reservations
-        const conflictingReservation = await Reservation.findOne({
-            sport_id: sport._id,
-            date,
-            _id: { $ne: reservationId }, // Exclude the current reservation
-            $or: [
-                { start_time: { $lt: endTime24 }, end_time: { $gt: startTime24 } }, // Overlaps with existing reservation
-            ],
-        });
-
-        if (conflictingReservation) {
-            return res.status(400).json({ error: "Time conflict with an existing reservation for the same sport." });
-        }
-
-        // Update the reservation
-        reservation.sport_id = sport._id;
-        reservation.date = date;
-        reservation.start_time = startTime24;
-        reservation.end_time = endTime24;
-
-        await reservation.save();
-
-        res.status(200).json({ message: 'Reservation updated successfully', reservation });
-    } catch (error) {
-        console.error('Error updating reservation:', error.message);
-        res.status(500).json({ error: 'An error occurred while updating the reservation' });
-    }
-});
 
 
 export default router;
