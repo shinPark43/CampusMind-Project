@@ -15,6 +15,7 @@ import * as ImagePicker from 'expo-image-picker'; // Import the image picker lib
 import { useRouter } from 'expo-router'; // Import useRouter
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 
 const { width, height } = Dimensions.get('window');
 // const API_URL = 'https://booking-backend-51654182318.us-central1.run.app'; // Base URL for the backend
@@ -40,6 +41,73 @@ const HomePage = () => {
   const [isModalVisible, setIsModalVisible] = useState(false); // State for modal visibility
   const [loading, setLoading] = useState(true);
 
+  // Function to handle profile image selection
+  const handleSelectProfileImage = async () => {
+    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permissionResult.granted) {
+      Alert.alert('Permission Denied', 'You need to grant permission to access the photo gallery.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1], // Square aspect ratio
+      quality: 1,
+    });
+
+    if (!result.canceled) {
+      try {
+        const token = await AsyncStorage.getItem('token');
+        if (!token) throw new Error('User not authenticated');
+
+        console.log('Uploading image to:', `${process.env.EXPO_PUBLIC_API_URL}/api/users/updateProfileImage`);
+        console.log('Image URI:', result.assets[0].uri);
+
+        // Send the image URI to the backend
+        const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/users/updateProfileImage`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            imageUri: result.assets[0].uri
+          }),
+        });
+
+        console.log('Response status:', response.status);
+        const responseText = await response.text();
+        console.log('Response text:', responseText);
+
+        if (response.ok) {
+          try {
+            const data = JSON.parse(responseText);
+            setProfileImage({ uri: result.assets[0].uri });
+            Alert.alert('Success', 'Profile image updated successfully');
+          } catch (parseError) {
+            console.error('Error parsing response:', parseError);
+            throw new Error('Invalid server response');
+          }
+        } else {
+          throw new Error(responseText || 'Failed to update profile image');
+        }
+      } catch (error) {
+        console.error('Error updating profile image:', error);
+        Alert.alert('Error', error.message || 'Failed to update profile image');
+      }
+    }
+
+    setIsModalVisible(false); // Close the modal after selecting an image
+  };
+
+  // Function to navigate to ProfilePage
+  const handleEditProfile = () => {
+    setIsModalVisible(false); // Close the modal
+    router.push('ProfilePage'); // Navigate to ProfilePage
+  };
+
   // Fetch user profile and reservations
   useEffect(() => {
     const fetchData = async () => {
@@ -60,6 +128,10 @@ const HomePage = () => {
         if (profileResponse.ok) {
           setFirstName(profileData.firstName);
           setLastName(profileData.lastName);
+          // Set profile image if available
+          if (profileData.profileImage) {
+            setProfileImage({ uri: profileData.profileImage });
+          }
         } else {
           Alert.alert('Error', profileData.error || 'Failed to fetch user profile');
         }
@@ -106,6 +178,10 @@ const HomePage = () => {
           if (profileResponse.ok) {
             setFirstName(profileData.firstName);
             setLastName(profileData.lastName);
+            // Set profile image if available
+            if (profileData.profileImage) {
+              setProfileImage({ uri: profileData.profileImage });
+            }
           } else {
             Alert.alert('Error', profileData.error || 'Failed to fetch user profile');
           }
@@ -137,36 +213,6 @@ const HomePage = () => {
       };
     }, [])
   );
-
-  // Function to handle profile image selection
-  const handleSelectProfileImage = async () => {
-    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-    if (!permissionResult.granted) {
-      Alert.alert('Permission Denied', 'You need to grant permission to access the photo gallery.');
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1], // Square aspect ratio
-      quality: 1,
-    });
-
-    if (!result.canceled) {
-      console.log('Selected Image URI:', result.assets[0].uri);
-      setProfileImage({ uri: result.assets[0].uri }); // Update the profile image state
-    }
-
-    setIsModalVisible(false); // Close the modal after selecting an image
-  };
-
-  // Function to navigate to ProfilePage
-  const handleEditProfile = () => {
-    setIsModalVisible(false); // Close the modal
-    router.push('ProfilePage'); // Navigate to ProfilePage
-  };
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
@@ -230,7 +276,7 @@ const HomePage = () => {
       </LinearGradient>
 
       {/* Favorites Section */}
-      <View style={styles.favoritesSection}>
+      {/* <View style={styles.favoritesSection}>
         <Text style={styles.sectionTitle}>Your Favorites</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           {favorites.map((favorite, index) => (
@@ -240,6 +286,28 @@ const HomePage = () => {
             </TouchableOpacity>
           ))}
         </ScrollView>
+      </View> */}
+
+      {/* AI Chat Section */}
+      <View style={styles.aiChatSection}>
+        <Text style={styles.sectionTitle}>AI Assistant</Text>
+        <TouchableOpacity 
+          style={styles.aiChatCard}
+          onPress={() => router.push('/chatbot')}
+        >
+          <View style={styles.aiChatContent}>
+            <View style={styles.aiChatIcon}>
+              <Text style={styles.avatarText}>G</Text>
+            </View>
+            <View style={styles.aiChatText}>
+              <Text style={styles.aiChatTitle}>Chat with Gym Assistant</Text>
+              <Text style={styles.aiChatDescription}>
+                Get instant answers about facilities, hours, and more
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={24} color={COLORS.primary} />
+          </View>
+        </TouchableOpacity>
       </View>
 
       {/* Upcoming Bookings Section */}
@@ -581,6 +649,54 @@ const styles = StyleSheet.create({
   modalCancelText: {
     fontSize: 16,
     color: 'red',
+  },
+  aiChatSection: {
+    marginTop: height * 0.02,
+    paddingHorizontal: width * 0.05,
+  },
+  aiChatCard: {
+    backgroundColor: COLORS.primary,
+    borderRadius: 10,
+    padding: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 3,
+    borderColor: '#fff',
+    borderWidth: 0.2,
+  },
+  aiChatContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  aiChatIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 15,
+  },
+  avatarText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: COLORS.primary,
+  },
+  aiChatText: {
+    flex: 1,
+  },
+  aiChatTitle: {
+    fontSize: width * 0.04,
+    fontWeight: 'bold',
+    color: COLORS.textPrimary,
+    marginBottom: 4,
+  },
+  aiChatDescription: {
+    fontSize: width * 0.035,
+    color: COLORS.textPrimary,
+    opacity: 0.8,
   },
 });
 

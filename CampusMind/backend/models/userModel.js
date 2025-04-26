@@ -47,6 +47,10 @@ const userSchema = new Schema({
     resetTokenExpiry: { // Same as line 44
         type: Date,
         default: null
+    },
+    profileImage: {
+        type: String,
+        default: null
     }
 });
 

@@ -80,6 +80,7 @@ router.get('/getUserProfile', auth, async (req, res) => {
             lastName: user.last_name,
             CID: user.CID,
             email: user.email,
+            profileImage: user.profileImage
         });
     } catch (error) {
         console.error('Error fetching user profile:', error.message);
@@ -122,6 +123,41 @@ router.put('/updateUserProfile', auth, async (req, res) => {
     } catch (error) {
         console.error('Error updating profile:', error.message);
         res.status(500).json({ error: 'An error occurred while updating the profile' });
+    }
+});
+
+// Update profile image
+router.put('/updateProfileImage', auth, async (req, res) => {
+    try {
+        console.log('Received profile image update request:', req.body);
+        
+        const { imageUri } = req.body;
+        if (!imageUri) {
+            console.log('Missing imageUri in request');
+            return res.status(400).json({ error: 'Image URI is required' });
+        }
+
+        const userId = req.user._id;
+        console.log('Updating profile image for user:', userId);
+        
+        const user = await User.findById(userId);
+        
+        if (!user) {
+            console.log('User not found:', userId);
+            return res.status(403).json({ error: 'User not found' });
+        }
+
+        user.profileImage = imageUri;
+        await user.save();
+        console.log('Profile image updated successfully for user:', userId);
+
+        res.status(200).json({ 
+            message: 'Profile image updated successfully',
+            profileImage: user.profileImage
+        });
+    } catch (error) {
+        console.error('Error updating profile image:', error);
+        res.status(500).json({ error: 'An error occurred while updating the profile image' });
     }
 });
 
