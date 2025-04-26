@@ -81,18 +81,10 @@ export default function AdminPortal() {
   
   // ✅ ONLY THIS useEffect now
   useEffect(() => {
-    const fetchAndCleanup = async () => {
-      try {
-        await fetch("http://localhost:3000/reservations/cleanup", { method: "DELETE" }); // clean up
-        if (selectedDate) {
-          const formattedDate = selectedDate.toISOString().split("T")[0];
-          fetchReservationsByDate(formattedDate); // then refresh
-        }
-      } catch (err) {
-        console.error("Cleanup or fetch error:", err);
-      }
-    };
-    fetchAndCleanup();
+    if (selectedDate) {
+      const formattedDate = selectedDate.toISOString().split("T")[0];
+      fetchReservationsByDate(formattedDate); 
+    }
   }, [selectedDate]);
   
   // ❌ REMOVE THIS (you already included fetch inside the above!)

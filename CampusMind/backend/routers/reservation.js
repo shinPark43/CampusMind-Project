@@ -10,23 +10,18 @@ import moment from 'moment-timezone';
 
 const router = Router();
 
-router.delete('/cleanup', async (req, res) => {   //so old reservations do not stay in mongodb
+router.delete('/cleanup', async (req, res) => {
   try {
     const now = new Date();
+    const fiveDaysAgo = new Date(now);
+    fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5); // 5 days before today
+    const fiveDaysAgoDate = fiveDaysAgo.toISOString().split('T')[0]; // format: YYYY-MM-DD
 
     const deleted = await Reservation.deleteMany({
-      $or: [
-        // Reservations before today
-        { date: { $lt: now.toISOString().split('T')[0] } },
-        // Reservations that are today but already finished
-        { 
-          date: now.toISOString().split('T')[0],
-          end_time: { $lt: now.toTimeString().slice(0,5) }
-        }
-      ]
+      date: { $lt: fiveDaysAgoDate } // only delete dates *older* than 5 days ago
     });
 
-    res.status(200).json({ message: 'Expired reservations deleted.', deletedCount: deleted.deletedCount });
+    res.status(200).json({ message: 'Old reservations (5+ days ago) deleted.', deletedCount: deleted.deletedCount });
   } catch (error) {
     console.error('Cleanup error:', error.message);
     res.status(500).json({ error: 'Failed to clean up reservations.' });
