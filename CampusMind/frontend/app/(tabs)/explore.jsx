@@ -17,7 +17,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const { width, height } = Dimensions.get('window');
-const API_URL = 'http://10.80.89.61:3000'; // Base URL for the backend
+// const API_URL = 'https://booking-backend-51654182318.us-central1.run.app'; // Base URL for the backend
 
 const HomePage = () => {
   const router = useRouter(); // Initialize router
@@ -48,7 +48,7 @@ const HomePage = () => {
         if (!token) throw new Error('User not authenticated');
 
         // Fetch user profile
-        const profileResponse = await fetch(`${API_URL}/users/getUserProfile`, {
+        const profileResponse = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/users/getUserProfile`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -65,7 +65,7 @@ const HomePage = () => {
         }
 
         // Fetch reservations
-        const reservationsResponse = await fetch(`${API_URL}/reservations/getUserReservation`, {
+        const reservationsResponse = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/reservations/getUserReservation`, {
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${token}`,
@@ -94,7 +94,7 @@ const HomePage = () => {
           if (!token) throw new Error('User not authenticated');
 
           // Fetch user profile
-          const profileResponse = await fetch(`${API_URL}/users/getUserProfile`, {
+          const profileResponse = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/users/getUserProfile`, {
             method: 'GET',
             headers: {
               'Authorization': `Bearer ${token}`,
@@ -111,7 +111,7 @@ const HomePage = () => {
           }
 
           // Fetch reservations
-          const reservationsResponse = await fetch(`${API_URL}/reservations/getUserReservation`, {
+          const reservationsResponse = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/reservations/getUserReservation`, {
             headers: {
               'Content-Type': 'application/json',
               Authorization: `Bearer ${token}`,
@@ -585,3 +585,4 @@ const styles = StyleSheet.create({
 });
 
 export default HomePage;
+
