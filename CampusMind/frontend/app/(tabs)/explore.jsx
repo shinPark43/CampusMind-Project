@@ -41,6 +41,73 @@ const HomePage = () => {
   const [isModalVisible, setIsModalVisible] = useState(false); // State for modal visibility
   const [loading, setLoading] = useState(true);
 
+  // Function to handle profile image selection
+  const handleSelectProfileImage = async () => {
+    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permissionResult.granted) {
+      Alert.alert('Permission Denied', 'You need to grant permission to access the photo gallery.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1], // Square aspect ratio
+      quality: 1,
+    });
+
+    if (!result.canceled) {
+      try {
+        const token = await AsyncStorage.getItem('token');
+        if (!token) throw new Error('User not authenticated');
+
+        console.log('Uploading image to:', `${process.env.EXPO_PUBLIC_API_URL}/api/users/updateProfileImage`);
+        console.log('Image URI:', result.assets[0].uri);
+
+        // Send the image URI to the backend
+        const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/users/updateProfileImage`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            imageUri: result.assets[0].uri
+          }),
+        });
+
+        console.log('Response status:', response.status);
+        const responseText = await response.text();
+        console.log('Response text:', responseText);
+
+        if (response.ok) {
+          try {
+            const data = JSON.parse(responseText);
+            setProfileImage({ uri: result.assets[0].uri });
+            Alert.alert('Success', 'Profile image updated successfully');
+          } catch (parseError) {
+            console.error('Error parsing response:', parseError);
+            throw new Error('Invalid server response');
+          }
+        } else {
+          throw new Error(responseText || 'Failed to update profile image');
+        }
+      } catch (error) {
+        console.error('Error updating profile image:', error);
+        Alert.alert('Error', error.message || 'Failed to update profile image');
+      }
+    }
+
+    setIsModalVisible(false); // Close the modal after selecting an image
+  };
+
+  // Function to navigate to ProfilePage
+  const handleEditProfile = () => {
+    setIsModalVisible(false); // Close the modal
+    router.push('ProfilePage'); // Navigate to ProfilePage
+  };
+
   // Fetch user profile and reservations
   useEffect(() => {
     const fetchData = async () => {
@@ -61,6 +128,10 @@ const HomePage = () => {
         if (profileResponse.ok) {
           setFirstName(profileData.firstName);
           setLastName(profileData.lastName);
+          // Set profile image if available
+          if (profileData.profileImage) {
+            setProfileImage({ uri: profileData.profileImage });
+          }
         } else {
           Alert.alert('Error', profileData.error || 'Failed to fetch user profile');
         }
@@ -107,6 +178,10 @@ const HomePage = () => {
           if (profileResponse.ok) {
             setFirstName(profileData.firstName);
             setLastName(profileData.lastName);
+            // Set profile image if available
+            if (profileData.profileImage) {
+              setProfileImage({ uri: profileData.profileImage });
+            }
           } else {
             Alert.alert('Error', profileData.error || 'Failed to fetch user profile');
           }
@@ -138,36 +213,6 @@ const HomePage = () => {
       };
     }, [])
   );
-
-  // Function to handle profile image selection
-  const handleSelectProfileImage = async () => {
-    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-    if (!permissionResult.granted) {
-      Alert.alert('Permission Denied', 'You need to grant permission to access the photo gallery.');
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1], // Square aspect ratio
-      quality: 1,
-    });
-
-    if (!result.canceled) {
-      console.log('Selected Image URI:', result.assets[0].uri);
-      setProfileImage({ uri: result.assets[0].uri }); // Update the profile image state
-    }
-
-    setIsModalVisible(false); // Close the modal after selecting an image
-  };
-
-  // Function to navigate to ProfilePage
-  const handleEditProfile = () => {
-    setIsModalVisible(false); // Close the modal
-    router.push('ProfilePage'); // Navigate to ProfilePage
-  };
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>

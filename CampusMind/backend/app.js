@@ -18,16 +18,35 @@ console.log('MongoDB URL:', process.env.MONGODB_URL); // Check if it's loaded co
 
 const app = express();
 
-app.use(urlencoded({ extended: true }));
+// Middleware
 app.use(json());
-app.use(express.json()); // Middleware to parse JSON data
-app.use('/api/auth', forgotPasswordRouter);
+app.use(urlencoded({ extended: true }));
+
+// Add CORS middleware
+app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+    if (req.method === 'OPTIONS') {
+        return res.sendStatus(200);
+    }
+    next();
+});
+
+// Root route for testing
+app.get('/', (req, res) => {
+    res.json({ message: 'Backend server is running' });
+});
+
+// Mount routers
+app.use('/api/users', userRouter); // Mount user router at /api/users
+app.use('/api/sportEquipment', sportEquipmentRouter);
+app.use('/api/reservations', reservationRouter);
+app.use('/api/forgot-password', forgotPasswordRouter);
+app.use('/api/courts', courtRouter);
+app.use('/api/chat', chatRouter);
+
 app.use(logger); // Use the logger middleware
-app.use("/users", userRouter); // Use the user router with the /users prefix
-app.use(sportEquipmentRouter); // Use the sport equipment router
-app.use("/reservations", reservationRouter); // Use the reservation router with the /reservations prefix
-app.use("/courts", courtRouter); // Use the court router with the /courts prefix
-app.use("/api/chat", chatRouter); // Use the chat router with the /api/chat prefix
 
 app.listen(port, () => {
     console.log(`Server is up on port ${port}`);
