@@ -63,8 +63,37 @@ const LoginPage = () => {
     }
   };
 
-  const handleForgotPassword = () => {
-    Alert.alert('Forgot Password', 'Redirecting to password reset page...');
+  const handleForgotPassword = async () => {
+    if (!email) {
+      Alert.alert('Error', 'Please enter your email address first.');
+      return;
+    }
+
+    if (!email.endsWith('@angelo.edu')) {
+      Alert.alert('Error', 'Email must end with @angelo.edu.');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/auth/forgot-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      const json = await response.json();
+
+      if (response.ok) {
+        Alert.alert('Success', 'Password reset email sent! Please check your inbox.');
+      } else {
+        Alert.alert('Error', json.error || 'An error occurred while processing your request.');
+      }
+    } catch (error) {
+      console.error('Forgot Password Error:', error);
+      Alert.alert('Error', 'Unable to connect to the server. Please try again later.');
+    }
   };
 
   return (
