@@ -9,7 +9,7 @@ const client = new postmark.ServerClient(process.env.POSTMARK_API_KEY);
  */
 export const sendPasswordResetEmail = async (to, resetToken) => {
     try {
-        const resetUrl = `https://scaling-waddle-wr5q6qrrvv7x254pr-3000.app.github.dev/reset-password?token=${resetToken}`;
+        const resetUrl = `http://10.80.75.10:8081/(tabs)/reset-passwordpage?token=${resetToken}`;
         
         await client.sendEmail({
             From: "campusmind@resetpassword.xyz",

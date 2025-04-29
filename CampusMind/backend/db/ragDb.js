@@ -14,6 +14,16 @@ const connectionOptions = {
 };
 
 let connection = null;
+let Hours = null;
+
+// Schema for storing hours data
+const hoursSchema = new mongoose.Schema({
+  location: { type: String, required: true },
+  date: { type: String, required: true },
+  day: { type: String, required: true },
+  hours: { type: String, required: true },
+  timestamp: { type: Date, default: Date.now }
+});
 
 const connectRAGDB = async () => {
   try {
@@ -32,6 +42,8 @@ const connectRAGDB = async () => {
     // Set up event listeners
     connection.on('connected', () => {
       console.log(`RAG Database Connected: ${connection.client.s.url}`);
+      // Create the Hours model after connection is established
+      Hours = connection.model('Hours', hoursSchema);
     });
 
     connection.on('error', (err) => {
@@ -92,4 +104,4 @@ const checkDatabaseHealth = async () => {
   }
 };
 
-export { connectRAGDB, checkDatabaseHealth }; 
+export { connectRAGDB, Hours, hoursSchema, checkDatabaseHealth }; 
